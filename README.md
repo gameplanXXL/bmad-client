@@ -122,14 +122,27 @@ pnpm test client.test.ts
 - [x] Vitest testing framework
 - [x] ESLint + Prettier
 - [x] Basic package structure
-- [x] First tests passing
+- [x] First tests passing (9 tests)
 
-🚧 Phase 1.2-1.7: SDK Core - **IN PROGRESS**
-- [ ] System Prompt Generator
-- [ ] Agent Loader
+✅ Phase 1.2: System Prompt Generator - **COMPLETE**
+- [x] Base Claude Code prompt implementation
+- [x] Tool descriptions formatter
+- [x] Agent persona injection
+- [x] Comprehensive unit tests (17 tests)
+
+✅ Phase 1.3: Agent Loader - **COMPLETE**
+- [x] Markdown file parsing with gray-matter
+- [x] Zod schema validation
+- [x] Directory loading support
+- [x] Error handling (AgentLoadError, AgentParseError)
+- [x] Unit tests (8 tests)
+
+🚧 Phase 1.4-1.7: SDK Core - **IN PROGRESS**
 - [ ] Anthropic Provider
 - [ ] Fallback Tool Executor
 - [ ] Session with Tool Call Loop
+
+**Test Status:** 34 passing tests ✅
 
 See [docs/poc-plan.md](docs/poc-plan.md) for complete roadmap.
 
