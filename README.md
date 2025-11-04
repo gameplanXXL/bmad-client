@@ -145,11 +145,20 @@ pnpm test client.test.ts
 - [x] Response parsing (text + tool calls)
 - [x] Comprehensive unit tests with mocked SDK (14 tests)
 
-🚧 Phase 1.5-1.7: SDK Core - **IN PROGRESS**
-- [ ] Fallback Tool Executor
-- [ ] Session with Tool Call Loop
+✅ Phase 1.5: Fallback Tool Executor - **COMPLETE**
+- [x] In-memory VFS with Map-based storage
+- [x] read_file, write_file, edit_file tools
+- [x] Safe bash_command subset (mkdir, ls, pwd, echo)
+- [x] list_files tool for directory listing
+- [x] Path validation and error handling
+- [x] Helper methods (getDocuments, initializeFiles, clear, getSize)
+- [x] Comprehensive unit tests (32 tests)
 
-**Test Status:** 48 passing tests ✅
+🚧 Phase 1.6-1.7: SDK Core - **IN PROGRESS**
+- [ ] Session with Tool Call Loop
+- [ ] Final Integration
+
+**Test Status:** 80 passing tests ✅
 
 See [docs/poc-plan.md](docs/poc-plan.md) for complete roadmap.
 
