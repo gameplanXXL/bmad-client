@@ -8,6 +8,7 @@ export { BmadClient } from './client.js';
 export { BmadSession } from './session.js';
 export { SystemPromptGenerator } from './prompt-generator.js';
 export { AgentLoader, AgentLoadError, AgentParseError } from './agent-loader.js';
+export { AnthropicProvider, AnthropicProviderError } from './providers/anthropic.js';
 
 export type {
   BmadClientConfig,

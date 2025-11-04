@@ -137,12 +137,19 @@ pnpm test client.test.ts
 - [x] Error handling (AgentLoadError, AgentParseError)
 - [x] Unit tests (8 tests)
 
-🚧 Phase 1.4-1.7: SDK Core - **IN PROGRESS**
-- [ ] Anthropic Provider
+✅ Phase 1.4: Anthropic Provider - **COMPLETE**
+- [x] Anthropic SDK integration (@anthropic-ai/sdk)
+- [x] sendMessage() with tool support
+- [x] Cost calculation for all Claude 4 models
+- [x] Model validation and normalization
+- [x] Response parsing (text + tool calls)
+- [x] Comprehensive unit tests with mocked SDK (14 tests)
+
+🚧 Phase 1.5-1.7: SDK Core - **IN PROGRESS**
 - [ ] Fallback Tool Executor
 - [ ] Session with Tool Call Loop
 
-**Test Status:** 34 passing tests ✅
+**Test Status:** 48 passing tests ✅
 
 See [docs/poc-plan.md](docs/poc-plan.md) for complete roadmap.
 
