@@ -121,6 +121,8 @@ export interface SessionResult {
   costs: CostReport;
   duration: number;
   error?: Error;
+  messages?: Message[]; // Full conversation history
+  finalResponse?: string; // Last assistant message (for convenience)
 }
 
 export interface Document {

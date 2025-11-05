@@ -50,7 +50,7 @@ export class AnthropicProvider implements LLMProvider {
       // Convert messages to Anthropic format
       const anthropicMessages = conversationMessages.map((msg) => ({
         role: msg.role as 'user' | 'assistant',
-        content: typeof msg.content === 'string' ? msg.content : this.formatContent(msg.content),
+        content: typeof msg.content === 'string' ? msg.content : (this.formatContent(msg.content) as any),
       }));
 
       // Convert tools to Anthropic format
@@ -138,7 +138,7 @@ export class AnthropicProvider implements LLMProvider {
       tool_use_id?: string;
       content?: string;
     }>
-  ): unknown[] {
+  ): Array<Record<string, unknown>> {
     return content.map((block) => {
       if (block.type === 'text') {
         return { type: 'text', text: block.text };
@@ -158,7 +158,7 @@ export class AnthropicProvider implements LLMProvider {
           content: block.content,
         };
       }
-      return block;
+      return block as Record<string, unknown>;
     });
   }
 

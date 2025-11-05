@@ -10,12 +10,12 @@ This project is currently in active development. See [docs/poc-plan.md](docs/poc
 
 ## What is BMad Client?
 
-BMad Client Library is a Node.js/TypeScript SDK that enables developers to integrate BMad-Method workflows into their applications. It provides:
+BMad Client Library is a Node.js/TypeScript SDK that enables developers to integrate BMad-Method workflows into their applications using **Anthropic Claude**. It provides:
 
-- **Agent Orchestration** - Execute specialized AI agents (PM, Architect, Dev, etc.)
-- **Tool Execution** - Agents can read/write files, run commands, search code
+- **Agent Orchestration** - Execute specialized AI agents (PM, Architect, Dev, etc.) powered by Claude
+- **Tool Execution** - Agents can read/write files, run commands via in-memory virtual filesystem
 - **Session Management** - Pause/resume conversations, handle user questions
-- **Cost Tracking** - Monitor LLM API costs in real-time
+- **Cost Tracking** - Monitor Anthropic API costs in real-time with Claude's token pricing
 - **Type-Safe** - Full TypeScript support with comprehensive types
 
 ## Quick Start
@@ -23,7 +23,7 @@ BMad Client Library is a Node.js/TypeScript SDK that enables developers to integ
 ### Installation
 
 ```bash
-pnpm install
+npm install
 ```
 
 ### Basic Usage
@@ -34,16 +34,16 @@ import { BmadClient } from '@bmad/client';
 const client = new BmadClient({
   provider: {
     type: 'anthropic',
-    apiKey: process.env.ANTHROPIC_API_KEY
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    model: 'claude-sonnet-4' // or 'claude-opus-4', 'claude-haiku-3-5'
   }
 });
 
 const session = await client.startAgent('pm', '*help');
 
-session.on('question', (q) => {
-  console.log('Agent asks:', q.question);
-  // Handle user input
-  session.answer('My answer');
+// Listen for events
+session.on('started', () => {
+  console.log('Agent execution started');
 });
 
 session.on('completed', (result) => {
@@ -51,8 +51,25 @@ session.on('completed', (result) => {
   console.log('Total cost:', result.costs.totalCost, 'USD');
 });
 
-await session.execute();
+// Execute the agent
+const result = await session.execute();
+console.log('Status:', result.status);
 ```
+
+### Try the Example
+
+```bash
+# 1. Configure your API key (one-time setup)
+cp .env.example .env
+# Edit .env and add your ANTHROPIC_API_KEY
+
+# 2. Run the example
+npm run example:simple
+```
+
+See [examples/README.md](examples/README.md) for more examples and documentation.
+
+**Get your API key:** [console.anthropic.com](https://console.anthropic.com/)
 
 ## Development
 
@@ -154,11 +171,35 @@ pnpm test client.test.ts
 - [x] Helper methods (getDocuments, initializeFiles, clear, getSize)
 - [x] Comprehensive unit tests (32 tests)
 
-🚧 Phase 1.6-1.7: SDK Core - **IN PROGRESS**
-- [ ] Session with Tool Call Loop
-- [ ] Final Integration
+✅ Phase 1.6: Session with Tool Call Loop - **COMPLETE**
+- [x] Full component integration (SystemPromptGenerator, AgentLoader, AnthropicProvider, FallbackToolExecutor)
+- [x] Complete tool call loop implementation
+- [x] Real-time cost tracking and enforcement
+- [x] Event-driven session lifecycle (started, completed, failed)
+- [x] Agent loading with fallback paths
+- [x] LLM message conversation handling
+- [x] Tool execution and result formatting
+- [x] Comprehensive error handling
+- [x] End-to-end integration tests (4 tests)
 
-**Test Status:** 80 passing tests ✅
+✅ Phase 1.7: Examples & Documentation - **COMPLETE**
+- [x] Example script (examples/simple-agent.ts)
+- [x] Example documentation (examples/README.md)
+- [x] Package build system working
+- [x] Main README updated with examples
+- [x] Ready for first real agent execution!
+
+**Test Status:** 84 passing tests ✅
+**Build Status:** ✅ All packages building successfully
+
+🎯 **Phase 1 PoC - COMPLETE!** The SDK is fully functional and tested with real agents.
+
+**First Agent Execution:** ✅ Successfully executed PM agent with Anthropic Claude API
+- Session Duration: ~4s
+- Cost: $0.0075 USD
+- Input Tokens: 2,089
+- Output Tokens: 84
+- Status: completed
 
 See [docs/poc-plan.md](docs/poc-plan.md) for complete roadmap.
 

@@ -28,7 +28,7 @@ This is a new SDK built from scratch. No existing starter templates are used. Th
 
 BMad Client Library is a **headless Node.js/TypeScript SDK** architected as a modular library (not a service) that applications import and run in-process. The core architecture follows a **layered design** with clean separation between client API, session orchestration, provider abstraction, agent system, MCP integration, storage, and cost tracking.
 
-The system uses **event-driven session management** to handle asynchronous LLM interactions with pause/resume capabilities, enabling multi-turn conversations where the LLM can ask questions and wait for user responses. **Multi-provider support** through an abstract interface allows switching between Anthropic Claude, OpenAI, and custom LLM backends without changing application code.
+The system uses **event-driven session management** to handle asynchronous LLM interactions with pause/resume capabilities, enabling multi-turn conversations where the LLM can ask questions and wait for user responses. The SDK is **focused exclusively on Anthropic Claude** for optimal integration with Claude's tool-use capabilities and the BMad Method's requirements.
 
 **Model Context Protocol (MCP) integration** is the cornerstone of tool execution. Rather than implementing custom tools, the SDK acts as an **MCP client** that connects to MCP servers (filesystem, database, API servers, etc.) and dynamically discovers their capabilities. Tool calls from LLMs are routed to the appropriate MCP server via JSON-RPC 2.0 over stdio or SSE transports. This approach provides:
 - **75% less SDK code** - No custom tool implementations needed
@@ -49,9 +49,9 @@ This architecture achieves PRD goals by providing a production-ready, framework-
 
 **Key Services:**
 - **Runtime:** Node.js 18+ with dual ESM/CommonJS support
-- **LLM Providers:** Anthropic Claude API (primary), OpenAI API (future), custom providers via abstraction
-- **Storage:** Google Cloud Storage (with adapter interface for AWS S3, Azure Blob, local filesystem in future)
-- **Package Registry:** NPM for distribution (`@bmad/client` or `bmad-client`)
+- **LLM Provider:** Anthropic Claude API (exclusive)
+- **Storage:** Google Cloud Storage (adapter interface for future extensions: AWS S3, Azure Blob, local filesystem)
+- **Package Registry:** NPM for distribution (`@bmad/client`)
 - **Build Tools:** TypeScript compiler + tsup for bundling
 
 **Deployment Host and Regions:**
@@ -78,23 +78,18 @@ bmad-client/
 │   │   │   ├── client.ts        # BmadClient class
 │   │   │   ├── session.ts       # BmadSession class
 │   │   │   ├── agents/          # Agent registry, loader, schema
-│   │   │   ├── providers/       # Provider abstraction + base
+│   │   │   ├── providers/       # Anthropic provider implementation
 │   │   │   ├── storage/         # Storage abstraction + in-memory
-│   │   │   ├── mcp/             # MCP client, connection manager, tool router
-│   │   │   ├── templates/       # Template parser, generator
-│   │   │   ├── tasks/           # Task executor
-│   │   │   ├── filesystem/      # Fallback VFS (when no MCP servers)
-│   │   │   ├── cost/            # Cost tracker, calculator
-│   │   │   ├── errors/          # Custom error types
-│   │   │   └── utils/           # Logging, retry, validation
+│   │   │   ├── mcp/             # MCP client, connection manager, tool router (future)
+│   │   │   ├── templates/       # Template parser, generator (future)
+│   │   │   ├── tasks/           # Task executor (future)
+│   │   │   ├── tools/           # Fallback tool executor (VFS)
+│   │   │   ├── cost/            # Cost tracker, calculator (future)
+│   │   │   ├── errors/          # Custom error types (future)
+│   │   │   └── utils/           # Logging, retry, validation (future)
 │   │   ├── package.json
 │   │   └── tsconfig.json
-│   ├── provider-anthropic/      # @bmad/provider-anthropic
-│   │   ├── src/
-│   │   │   └── provider.ts      # AnthropicProvider implementation
-│   │   └── package.json
-│   ├── provider-openai/         # @bmad/provider-openai (future)
-│   ├── storage-gcs/             # @bmad/storage-gcs
+│   ├── storage-gcs/             # @bmad/storage-gcs (future)
 │   │   ├── src/
 │   │   │   └── adapter.ts       # GoogleCloudStorageAdapter
 │   │   └── package.json
@@ -156,14 +151,14 @@ bmad-client/
     │         │         │          │          │
     ▼         ▼         ▼          ▼          ▼
 ┌────────┐ ┌──────┐ ┌────────┐ ┌───────┐ ┌──────────┐
-│Anthropic│ │Agents│ │MCP     │ │ GCS   │ │Pricing   │
-│  SDK   │ │from  │ │Servers:│ │Adapter│ │Tables    │
-│OpenAI  │ │.bmad │ │- Files │ │S3(fut)│ │Token     │
-│SDK     │ │-core │ │- GitHub│ │Local  │ │Counter   │
-│        │ │Expans│ │- DB    │ │       │ │          │
-│        │ │Packs │ │- APIs  │ │       │ │          │
-│        │ │      │ │Fallback│ │       │ │          │
-│        │ │      │ │VFS     │ │       │ │          │
+│Anthropic│ │Agents│ │Tools:  │ │ GCS   │ │Pricing   │
+│  SDK   │ │from  │ │Fallback│ │(future│ │Tables    │
+│        │ │.bmad │ │VFS with│ │)      │ │Token     │
+│        │ │-core │ │5 tools │ │       │ │Counter   │
+│        │ │Expans│ │        │ │       │ │          │
+│        │ │Packs │ │MCP     │ │       │ │          │
+│        │ │      │ │(future)│ │       │ │          │
+│        │ │      │ │        │ │       │ │          │
 └────────┘ └──────┘ └────────┘ └───────┘ └──────────┘
               │         │
               │         ▼
@@ -478,10 +473,9 @@ class BmadSession {
 - **Formatting:** Prettier
 
 **Dependencies:**
-- **LLM SDKs:** `@anthropic-ai/sdk` (required), `openai` (optional)
-- **MCP:** `@modelcontextprotocol/sdk` (MCP client implementation, JSON-RPC)
-- **Storage:** `@google-cloud/storage` (in storage-gcs package)
-- **Utilities:** `zod` (schema validation), `minimatch` (glob patterns), `eventemitter3` (events), `gray-matter` (YAML frontmatter parsing)
+- **LLM SDK:** `@anthropic-ai/sdk` (required)
+- **Utilities:** `zod` (schema validation), `eventemitter3` (events), `gray-matter` (YAML frontmatter parsing)
+- **Future:** `@modelcontextprotocol/sdk` (for MCP integration), `@google-cloud/storage` (for GCS storage)
 
 **Dev Dependencies:**
 - **TypeDoc:** API documentation generation
@@ -1757,7 +1751,7 @@ pnpm test:unit
 | Package Manager | npm, yarn, pnpm | **pnpm** | Fast, efficient, strict dependency management |
 | Build Tool | tsc, esbuild, tsup, rollup | **tsup** | Fast, simple config, dual format output |
 | Testing Framework | Jest, Vitest, Mocha | **Vitest** | Fast, TypeScript-native, better ESM support |
-| LLM SDK | Direct HTTP, @anthropic-ai/sdk | **@anthropic-ai/sdk** | Official, type-safe, maintained |
+| LLM SDK | Direct HTTP, @anthropic-ai/sdk | **@anthropic-ai/sdk** | Official, type-safe, maintained by Anthropic |
 | Storage (MVP) | GCS, S3, Azure Blob | **GCS** | Simpler auth (ADC), good Node.js SDK |
 | **Tool Execution** | **Custom tools, MCP integration** | **MCP (Model Context Protocol)** | **75% less code, standardized, real filesystems, community ecosystem** |
 | MCP SDK | Build from scratch, @modelcontextprotocol/sdk | **@modelcontextprotocol/sdk** | Official implementation, well-tested, maintained |
@@ -1774,7 +1768,7 @@ pnpm test:unit
 - **MCP Client:** Component in the SDK that connects to MCP servers, discovers tools, and routes tool calls
 - **Tool:** Function exposed to LLM for performing actions (provided by MCP servers or fallback VFS)
 - **Fallback VFS:** In-memory virtual filesystem used when no MCP servers are configured (backward compatibility)
-- **Provider:** Abstraction layer for LLM APIs (Anthropic, OpenAI, custom)
+- **Provider:** Anthropic Claude API integration
 - **Storage Adapter:** Abstraction for document persistence (GCS, S3, local, etc.)
 - **Expansion Pack:** External NPM package containing additional agents for specialized domains
 - **Template:** YAML-defined structure for generating documents (PRD, architecture, stories)

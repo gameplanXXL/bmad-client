@@ -136,28 +136,28 @@ export class FallbackToolExecutor {
     try {
       switch (toolCall.name) {
         case 'read_file':
-          return await this.readFile(toolCall.input.file_path as string);
+          return await this.readFile(toolCall.input['file_path'] as string);
 
         case 'write_file':
           return await this.writeFile(
-            toolCall.input.file_path as string,
-            toolCall.input.content as string
+            toolCall.input['file_path'] as string,
+            toolCall.input['content'] as string
           );
 
         case 'edit_file':
           return await this.editFile(
-            toolCall.input.file_path as string,
-            toolCall.input.old_string as string,
-            toolCall.input.new_string as string
+            toolCall.input['file_path'] as string,
+            toolCall.input['old_string'] as string,
+            toolCall.input['new_string'] as string
           );
 
         case 'list_files':
-          return await this.listFiles(toolCall.input.path as string);
+          return await this.listFiles(toolCall.input['path'] as string);
 
         case 'bash_command':
           return await this.executeBashCommand(
-            toolCall.input.command as string,
-            toolCall.input.description as string
+            toolCall.input['command'] as string,
+            toolCall.input['description'] as string | undefined
           );
 
         default:
@@ -334,7 +334,7 @@ export class FallbackToolExecutor {
    */
   private async executeBashCommand(
     command: string,
-    description?: string
+    _description?: string
   ): Promise<ToolResult> {
     const parts = command.trim().split(/\s+/);
     const cmd = parts[0];
@@ -345,7 +345,7 @@ export class FallbackToolExecutor {
         return this.cmdMkdir(args);
 
       case 'ls':
-        return this.cmdLs(args);
+        return await this.cmdLs(args);
 
       case 'pwd':
         return this.cmdPwd();
@@ -369,11 +369,11 @@ export class FallbackToolExecutor {
       return { success: false, error: 'mkdir: missing directory name' };
     }
 
-    // Handle -p flag
-    const createParents = args.includes('-p');
+    // Handle -p flag (note: not actually used in simple implementation)
+    // const _createParents = args.includes('-p');
     const dirPath = args[args.length - 1];
 
-    if (!dirPath.startsWith('/')) {
+    if (!dirPath || !dirPath.startsWith('/')) {
       return { success: false, error: 'mkdir: path must be absolute' };
     }
 
@@ -399,9 +399,9 @@ export class FallbackToolExecutor {
   /**
    * ls command - List directory contents
    */
-  private cmdLs(args: string[]): ToolResult {
-    const path = args.length > 0 ? args[0] : '/';
-    return this.listFiles(path);
+  private async cmdLs(args: string[]): Promise<ToolResult> {
+    const path = args.length > 0 && args[0] ? args[0] : '/';
+    return await this.listFiles(path);
   }
 
   /**

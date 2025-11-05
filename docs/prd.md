@@ -33,7 +33,7 @@ The primary insight from the Project Brief is that developers need more than jus
 
 ### Functional Requirements
 
-**FR1:** The SDK shall provide a `BmadClient` class that accepts configuration for LLM provider (Anthropic, OpenAI, custom), API credentials, storage backend, and optional cost limits
+**FR1:** The SDK shall provide a `BmadClient` class that accepts configuration for LLM provider (Anthropic Claude), API credentials, storage backend, and optional cost limits
 
 **FR2:** The SDK shall support creating agent sessions programmatically by specifying agent type (pm, architect, dev, qa, analyst, sm, po, ux-expert) and command/task to execute
 
@@ -65,7 +65,7 @@ The primary insight from the Project Brief is that developers need more than jus
 
 **FR16:** The SDK shall return a final cost report at session completion including total cost, token counts, API call count, and per-model breakdown
 
-**FR17:** The SDK shall provide a provider abstraction interface allowing multiple LLM backends (Anthropic Claude, OpenAI, custom providers) to be used interchangeably
+**FR17:** The SDK shall provide a provider interface for Anthropic Claude with extensibility for future custom providers if needed
 
 **FR18:** The Anthropic provider implementation shall use the official `@anthropic-ai/sdk` package and support Claude Sonnet, Opus, and Haiku models
 
@@ -209,8 +209,7 @@ bmad-client/
 ├── packages/
 │   ├── core/              # @bmad/client - main SDK
 │   ├── provider-anthropic/ # @bmad/provider-anthropic
-│   ├── provider-openai/    # @bmad/provider-openai (future)
-│   ├── storage-gcs/        # @bmad/storage-gcs
+│   ├── storage-gcs/        # @bmad/storage-gcs (future)
 │   └── examples/           # Example applications
 ├── .bmad-core/             # Core agent definitions, templates, tasks
 └── docs/                   # Documentation site
@@ -225,10 +224,10 @@ bmad-client/
 The SDK is a client library, not a service. Applications import it as a dependency and run agent sessions in-process. Key architectural layers:
 
 1. **Client Layer:** `BmadClient` class, session management, public API
-2. **Provider Layer:** Abstraction for LLM providers (Anthropic, OpenAI, custom)
+2. **Provider Layer:** Anthropic Claude integration (extensible interface for future providers)
 3. **Agent Layer:** Dynamic agent loading, task execution, template processing
 4. **Tool Layer:** Virtual filesystem, document operations (Read, Write, Edit, Grep, Glob)
-5. **Storage Layer:** Abstraction for document persistence (GCS, future: S3, Azure, local)
+5. **Storage Layer:** Abstraction for document persistence (GCS planned, future: S3, Azure, local)
 6. **Cost Layer:** Token tracking, cost calculation, limit enforcement
 
 **Rationale:** In-process execution keeps latency low and simplifies deployment. Applications can wrap the SDK in their own APIs (REST, GraphQL) if needed.
@@ -428,8 +427,8 @@ so that **developers can discover and install the SDK from NPM**.
 ### Story 2.1: Provider Abstraction Interface
 
 As a **SDK developer**,
-I want **a provider abstraction interface supporting multiple LLM backends**,
-so that **the SDK can work with Anthropic, OpenAI, or custom providers interchangeably**.
+I want **a clean provider interface for Anthropic Claude**,
+so that **the SDK is focused and optimized for Claude's capabilities**.
 
 #### Acceptance Criteria
 
@@ -1458,7 +1457,6 @@ so that **I can see the SDK in action and adapt examples to my needs**.
 3. Example: Standalone script creating PRD with user prompts
 4. Example: AWS Lambda function running BMad agent on event trigger
 5. Example: Custom storage adapter implementation (local filesystem)
-6. Example: Custom LLM provider implementation (OpenAI)
 7. Each example includes: README with setup instructions, complete working code, demonstration of key features
 8. Examples are tested in CI/CD to ensure they work
 9. Examples are published in `packages/examples/` and on documentation site
@@ -1508,7 +1506,7 @@ Create a front-end specification document if UI components are needed for docume
 Winston, please review this PRD and create a comprehensive architecture document. Focus on:
 
 1. **System Design:** Define the module structure, class hierarchy, and dependency graph for the monorepo
-2. **Provider Abstraction:** Design the provider interface and implementation strategy for Anthropic, OpenAI, and custom providers
+2. **Provider Implementation:** Design the Anthropic provider with a clean interface that allows future extensibility if needed
 3. **Session State Machine:** Define the state transitions, persistence format, and recovery mechanisms
 4. **Virtual File System:** Specify the VFS implementation, tool integration, and performance characteristics
 5. **Cost Tracking:** Design the cost calculation engine, pricing table management, and reporting architecture
