@@ -617,7 +617,7 @@ describe('E2E: PM Agent', () => {
 - ✅ Tests have 80%+ coverage
 
 ### Out of Scope for PoC
-- ❌ MCP server integration (fallback VFS only)
+- ❌ Real filesystem access (VFS only)
 - ❌ GCS storage (in-memory only)
 - ❌ Multiple provider support (Anthropic only)
 - ❌ Production deployment
@@ -632,7 +632,7 @@ describe('E2E: PM Agent', () => {
 **Mitigation:** Start with simple agent, test early, iterate on system prompt
 
 ### Risk 2: Tool execution too complex
-**Mitigation:** Use fallback VFS first, defer MCP to post-PoC
+**Mitigation:** Use VFS-only approach, no external filesystem access in PoC
 
 ### Risk 3: API costs too high during testing
 **Mitigation:** Use mocked provider for most tests, real API only for E2E

@@ -54,10 +54,10 @@ The market for AI-powered development tools is exploding (Cursor, v0.dev, Bolt.n
 
 **BMad Client Library** is a Node.js/TypeScript SDK that provides a complete runtime for BMad-Method in backend environments. The library:
 
-1. **Abstracts LLM Providers:** Works with Anthropic Claude, OpenAI, or custom LLM backends
+1. **Abstracts LLM Providers:** Works with Anthropic Claude (exclusive for MVP, abstraction for future providers)
 2. **Manages Sessions:** Handles conversation state, pause/resume for user questions, and workflow orchestration
 3. **Loads Agents Dynamically:** Supports all core BMad agents plus expansion packs via a plugin system
-4. **Integrates MCP (Model Context Protocol):** Connects to MCP servers for tool execution (filesystem, databases, APIs) instead of implementing custom tools
+4. **Emulates Claude Code Environment:** Provides in-memory VFS with Claude Code-style tools for session isolation
 5. **Tracks Costs:** Monitors token usage and calculates costs per session with configurable limits
 6. **Integrates Storage:** Persists generated documents to Google Cloud Storage (or other backends)
 7. **Provides Headless API:** Framework-agnostic SDK that applications integrate via REST APIs, GraphQL, or direct imports
@@ -65,10 +65,10 @@ The market for AI-powered development tools is exploding (Cursor, v0.dev, Bolt.n
 ### Key Differentiators
 
 - **BMad-native:** Built specifically for BMad-Method, includes all agents and templates
-- **MCP-powered:** Uses Anthropic's Model Context Protocol for standardized tool execution (75% less code than custom implementations)
+- **VFS-based:** In-memory Virtual Filesystem for session isolation and Claude Code emulation
 - **Production-ready:** Cost tracking, limits, error handling, session management
-- **Extensible:** Plugin system for custom agents and expansion packs, plus MCP server ecosystem
-- **Provider-agnostic:** Not locked to Anthropic—supports multiple LLM backends
+- **Extensible:** Plugin system for custom agents and expansion packs
+- **Anthropic Claude focused:** Optimized for Claude's tool-use capabilities (MVP)
 - **Storage-flexible:** Google Cloud Storage by default, abstraction for other providers
 
 ### Why This Solution Will Succeed
@@ -88,19 +88,11 @@ import { BmadClient } from 'bmad-client';
 
 const client = new BmadClient({
   provider: { type: 'anthropic', apiKey: process.env.ANTHROPIC_KEY },
-  storage: new GoogleCloudStorage({ bucket: 'my-docs' }),
-  mcpServers: [
-    {
-      name: 'filesystem',
-      command: 'npx',
-      args: ['-y', '@modelcontextprotocol/server-filesystem', '/project/path']
-    }
-  ]
+  costLimit: 5.00,
+  logLevel: 'info'
 });
 
-const session = await client.startAgent('pm', 'create-prd', {
-  costLimit: 5.00
-});
+const session = await client.startAgent('pm', 'create-prd');
 
 // Handle questions interactively
 session.on('question', async (q) => {
@@ -109,7 +101,10 @@ session.on('question', async (q) => {
 });
 
 const result = await session.execute();
-console.log(`PRD created! Cost: ${result.costs.totalCost} EUR`);
+
+// Documents are in VFS, can be saved to storage
+console.log(`PRD created! Cost: $${result.costs.totalCost}`);
+console.log(`Documents: ${result.documents.map(d => d.path).join(', ')}`);
 ```
 
 ---
@@ -203,46 +198,44 @@ console.log(`PRD created! Cost: ${result.costs.totalCost} EUR`);
 - **Multi-Provider Support:** Anthropic Claude API integration + abstract interface for OpenAI/custom providers
 - **Agent Plugin System:** Load core BMad agents (PM, Architect, Dev, QA, SM, PO, Analyst, UX Expert) dynamically
 - **Expansion Pack Support:** Import agents from external packages (e.g., `@bmad-expansions/expert-author`)
-- **MCP Integration:** Connect to MCP servers for tool execution (filesystem, databases, APIs) via JSON-RPC 2.0
-- **MCP Tool Discovery:** Auto-discover and register tools from configured MCP servers
-- **MCP Tool Routing:** Route LLM tool calls to appropriate MCP server
-- **Fallback Virtual Filesystem:** In-memory VFS when no MCP servers configured (testing, backward compatibility)
+- **Virtual Filesystem (VFS):** In-memory filesystem with Claude Code-style tools for session isolation
+- **Tool Execution:** read_file, write_file, edit_file, bash_command, grep_search, glob_pattern
+- **Template Pre-loading:** VFS pre-populated with BMAD templates and agent files at session start
 - **Google Cloud Storage Integration:** Save/load generated documents (PRDs, architecture, stories) to GCS buckets
 - **Template Processing:** Load and process YAML templates from `.bmad-core/templates/`
 - **Task Execution:** Execute task workflows from `.bmad-core/tasks/` markdown files
 - **TypeScript Support:** Full TypeScript definitions and type safety
-- **Error Handling:** Graceful handling of API errors, MCP errors, cost limit exceeded, session timeouts
-- **Basic Documentation:** README, getting started guide, API reference, MCP setup examples
+- **Error Handling:** Graceful handling of API errors, cost limit exceeded, session timeouts
+- **Basic Documentation:** README, getting started guide, API reference, examples
 
 ### Out of Scope for MVP
 
 - **UI Components:** No React/Vue components (headless only)
-- **Custom MCP Servers:** Use existing community MCP servers, don't build custom ones in MVP
-- **MCP SSE Transport:** Only stdio transport for MVP (SSE deferred)
 - **Multi-Model Routing:** Advanced features like routing questions to cheaper models
 - **Streaming Responses:** Defer real-time streaming to post-MVP
 - **Collaborative Sessions:** Multi-user editing/session sharing
 - **Cost Analytics Dashboard:** Advanced reporting and visualization
-- **Self-Hosted LLM Support:** Focus on cloud APIs first
+- **Self-Hosted LLM Support:** Focus on cloud APIs first (Anthropic exclusive for MVP)
 - **Database Storage:** Only GCS for MVP, other backends later
 - **Workflow Builder:** Visual workflow editor or DSL
+- **Real Filesystem Access:** VFS-only for MVP, no real filesystem operations
 
 ### MVP Success Criteria
 
 **The MVP is successful when:**
 
-1. A developer can install the package, configure it with their Anthropic API key and MCP servers, and execute a PM agent to create a PRD in <30 minutes
-2. MCP servers are automatically spawned, tools discovered, and ready for agent use
-3. Tool calls from LLMs are correctly routed to the appropriate MCP server
-4. Sessions correctly pause when LLMs ask questions, allow programmatic answers, and resume execution
-5. Cost tracking reports accurate totals (within 5% of actual API charges) at session completion
-6. Cost limits are enforced and throw clear errors when exceeded
-7. Generated documents are saved to Google Cloud Storage and can be retrieved
-8. All 8 core agents load and execute their primary commands successfully
-9. At least one expansion pack can be imported and used
-10. Fallback VFS works when no MCP servers are configured (for testing)
-11. TypeScript types provide autocomplete and type safety in IDEs
-12. Documentation enables integration without diving into source code
+1. A developer can install the package, configure it with their Anthropic API key, and execute a PM agent to create a PRD in <30 minutes
+2. Tool calls from LLMs are executed via in-memory VFS with session isolation
+3. Sessions correctly pause when LLMs ask questions, allow programmatic answers, and resume execution
+4. Cost tracking reports accurate totals (within 5% of actual API charges) at session completion
+5. Cost limits are enforced and throw clear errors when exceeded
+6. Generated documents can be saved to Google Cloud Storage (future feature)
+7. All 8 core agents load and execute their primary commands successfully
+8. At least one expansion pack can be imported and used
+9. VFS is pre-loaded with templates and agent files for each session
+10. TypeScript types provide autocomplete and type safety in IDEs
+11. Documentation enables integration without diving into source code
+12. Integration tests demonstrate complete PRD generation workflow
 
 ---
 
@@ -267,11 +260,10 @@ console.log(`PRD created! Cost: ${result.costs.totalCost} EUR`);
 - Local filesystem option
 - Database storage (PostgreSQL, MongoDB)
 
-**MCP Ecosystem Expansion:**
-- Additional MCP servers (web search, Slack, GitHub, Jira, Linear, Notion)
-- MCP SSE transport support (for long-running connections)
-- Custom MCP server templates and development tools
-- MCP server health monitoring and auto-reconnection
+**Tool Execution Evolution:**
+- Real filesystem access for brownfield projects (read actual code)
+- External command execution (pandoc, pdflatex, etc.) for asset generation
+- Database query execution for data-driven workflows
 
 **Developer Experience:**
 - CLI wrapper for testing sessions locally

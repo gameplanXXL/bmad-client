@@ -87,11 +87,14 @@ export class BmadSession extends EventEmitter {
       // 2. Initialize provider
       this.initializeProvider();
 
-      // 3. Generate system prompt with tools
+      // 3. Load agents into VFS for discovery (e.g., bmad-orchestrator)
+      await this.loadAgentsIntoVFS();
+
+      // 4. Generate system prompt with tools
       const tools = this.toolExecutor.getTools();
       const systemPrompt = this.promptGenerator.generate(agent, tools);
 
-      // 4. Initialize messages with system prompt and user command
+      // 5. Initialize messages with system prompt and user command
       this.messages = [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: this.formatUserCommand(agent) },
@@ -101,7 +104,7 @@ export class BmadSession extends EventEmitter {
         toolCount: tools.length,
       });
 
-      // 5. Tool call loop
+      // 6. Tool call loop
       let loopCount = 0;
       const maxLoops = 50; // Safety limit
 
@@ -185,7 +188,7 @@ export class BmadSession extends EventEmitter {
         throw new Error(`Max loop iterations (${maxLoops}) exceeded`);
       }
 
-      // 6. Build result
+      // 7. Build result
       const documents = this.toolExecutor.getDocuments();
       const costs = this.buildCostReport();
 
@@ -405,6 +408,88 @@ Result: ${result.result}`;
       apiCalls: this.apiCallCount,
       breakdown,
     };
+  }
+
+  /**
+   * Load all available agents into VFS for discovery
+   * This enables agents like bmad-orchestrator to discover and list agents
+   * using glob_pattern and read_file tools
+   */
+  private async loadAgentsIntoVFS(): Promise<void> {
+    try {
+      const agentFiles = await this.findAgentFiles();
+
+      if (agentFiles.length === 0) {
+        this.client.getLogger().warn('No agent files found for VFS loading');
+        return;
+      }
+
+      const { readFile } = await import('fs/promises');
+      const { basename } = await import('path');
+
+      // Load each agent file into VFS
+      const filesMap: Record<string, string> = {};
+
+      for (const agentPath of agentFiles) {
+        try {
+          const content = await readFile(agentPath, 'utf-8');
+          const fileName = basename(agentPath);
+          const vfsPath = `/.bmad-core/agents/${fileName}`;
+          filesMap[vfsPath] = content;
+        } catch (error) {
+          this.client.getLogger().warn('Failed to load agent file', {
+            path: agentPath,
+            error: error instanceof Error ? error.message : 'Unknown',
+          });
+        }
+      }
+
+      // Initialize VFS with agent files
+      this.toolExecutor.initializeFiles(filesMap);
+
+      this.client.getLogger().debug('Loaded agents into VFS', {
+        count: Object.keys(filesMap).length,
+        paths: Object.keys(filesMap),
+      });
+    } catch (error) {
+      // Non-fatal: Session can continue without agent discovery
+      this.client.getLogger().warn('Failed to load agents into VFS', {
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
+    }
+  }
+
+  /**
+   * Find all agent files from .bmad-core directories
+   */
+  private async findAgentFiles(): Promise<string[]> {
+    const { resolve } = await import('path');
+    const { glob } = await import('glob');
+
+    const agentPaths: string[] = [];
+
+    // Try local .bmad-core/agents/
+    try {
+      const localPattern = resolve(process.cwd(), '.bmad-core/agents/*.md');
+      const localFiles = await glob(localPattern, { windowsPathsNoEscape: true });
+      agentPaths.push(...localFiles);
+    } catch (error) {
+      this.client.getLogger().debug('No local .bmad-core/agents found');
+    }
+
+    // Try bmad-export-author fallback (for development)
+    try {
+      const fallbackPattern = resolve(
+        process.cwd(),
+        '../bmad-export-author/.bmad-core/agents/*.md'
+      );
+      const fallbackFiles = await glob(fallbackPattern, { windowsPathsNoEscape: true });
+      agentPaths.push(...fallbackFiles);
+    } catch (error) {
+      this.client.getLogger().debug('No bmad-export-author agents found');
+    }
+
+    return agentPaths;
   }
 
   /**

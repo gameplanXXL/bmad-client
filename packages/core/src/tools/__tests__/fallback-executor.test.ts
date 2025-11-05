@@ -12,13 +12,14 @@ describe('FallbackToolExecutor', () => {
     it('should return all tool definitions', () => {
       const tools = executor.getTools();
 
-      expect(tools).toHaveLength(5);
+      expect(tools).toHaveLength(6); // Added glob_pattern tool
       expect(tools.map((t) => t.name)).toEqual([
         'read_file',
         'write_file',
         'edit_file',
         'list_files',
         'bash_command',
+        'glob_pattern',
       ]);
     });
 

@@ -17,7 +17,7 @@
 
 The BMad-Method has proven its value as a structured approach to AI-powered workflows through Claude Code CLI, supporting both software development (PRD creation, architecture design, story generation) and content creation (educational book authoring, creative writing, design thinking facilitation). However, the CLI-only nature creates a significant barrier: developers building web applications cannot embed BMad workflows into their products. This PRD addresses that gap by defining a backend SDK that brings BMad-Method capabilities to any Node.js application.
 
-The primary insight from the Project Brief is that developers need more than just LLM API access—they need a complete runtime that handles session orchestration, cost management, document persistence, agent lifecycle, and tool execution. Rather than reimplementing tools, the SDK leverages the **Model Context Protocol (MCP)** to integrate with existing MCP servers for filesystem access, database queries, API integrations, and asset generation. This PRD defines those capabilities as a cohesive product that enables a new class of AI-powered tools built on BMad-Method foundations, supporting both software development and content-creation use cases.
+The primary insight from the Project Brief is that developers need more than just LLM API access—they need a complete runtime that handles session orchestration, cost management, document persistence, agent lifecycle, and tool execution. The SDK provides an **in-memory Virtual Filesystem (VFS)** that emulates Claude Code's environment, giving agents isolated file spaces for templates, tasks, and generated documents. This PRD defines those capabilities as a cohesive product that enables a new class of AI-powered tools built on BMad-Method foundations, supporting both software development and content-creation use cases.
 
 ### Change Log
 
@@ -25,7 +25,7 @@ The primary insight from the Project Brief is that developers need more than jus
 |------|---------|-------------|--------|
 | 2025-10-31 | 1.0 | Initial PRD creation | John (PM) |
 | 2025-10-31 | 1.1 | Added content-creation focus and CommandExecutor tool requirements | Winston (Architect) |
-| 2025-10-31 | 2.0 | Major revision: Replaced custom tool implementation with MCP (Model Context Protocol) integration | Winston (Architect) |
+| 2025-10-31 | 2.0 | Major revision: Implemented in-memory VFS for tool execution and session isolation | Winston (Architect) |
 
 ---
 
@@ -51,7 +51,7 @@ The primary insight from the Project Brief is that developers need more than jus
 
 **FR9:** The SDK shall execute task workflows defined in `.bmad-core/tasks/` markdown files following their elicitation and processing logic
 
-**FR10:** The SDK shall integrate with MCP (Model Context Protocol) servers to access tools and resources for file operations, database queries, API integrations, and command execution
+**FR10:** The SDK shall provide Claude Code-style tools (read_file, write_file, edit_file, bash_command, grep_search, glob_pattern) via an in-memory virtual filesystem for session isolation
 
 **FR11:** The SDK shall persist generated documents (PRDs, architecture docs, stories, etc.) to Google Cloud Storage buckets with configurable bucket names and paths
 
@@ -93,21 +93,21 @@ The primary insight from the Project Brief is that developers need more than jus
 
 **FR30:** CommandExecutor shall support working directory specification and environment variable injection for command execution context
 
-**FR31:** The SDK shall act as an MCP (Model Context Protocol) client, connecting to one or more MCP servers during initialization
+**FR31:** The SDK shall implement a `FallbackToolExecutor` that provides all tool execution via an in-memory virtual filesystem (VFS)
 
-**FR32:** The SDK shall automatically discover and register tools from all connected MCP servers via the `tools/list` protocol method
+**FR32:** Each session shall have its own isolated VFS instance to prevent cross-session data contamination
 
-**FR33:** The SDK shall route tool calls from LLM responses to the appropriate MCP server and return results to the LLM via the `tools/call` protocol method
+**FR33:** The VFS shall be pre-loaded with BMAD templates and agent files at session initialization
 
-**FR34:** MCP server connections shall be configured via `mcpServers` array in `BmadClientConfig` with support for stdio (process spawn) and SSE (HTTP) transports
+**FR34:** Tool calls from the LLM shall be executed against the session's VFS and results returned to the LLM
 
-**FR35:** The SDK shall implement JSON-RPC 2.0 message protocol for MCP server communication per the MCP specification
+**FR35:** The `FallbackToolExecutor` shall support safe bash commands (mkdir, echo, etc.) without executing arbitrary code
 
-**FR36:** The SDK shall handle MCP server lifecycle (initialization, capability negotiation, graceful shutdown) according to MCP protocol
+**FR36:** Documents created in the VFS shall be retrievable via `session.getDocuments()` after session completion
 
-**FR37:** The SDK shall provide fallback to built-in virtual filesystem tools if no MCP servers are configured (backward compatibility)
+**FR37:** The VFS shall support glob patterns for file discovery (e.g., `*.md`, `**/*.yaml`)
 
-**FR38:** MCP server errors shall be handled gracefully with retry logic for transient failures and clear error messages for permanent failures
+**FR38:** The VFS shall support grep-style search across virtual files with regex patterns
 
 ### Non-Functional Requirements
 
@@ -560,41 +560,41 @@ so that **only well-formed agents can be loaded and executed**.
 7. Parsed agent object is typed with TypeScript interface `AgentDefinition`
 8. Documentation describes agent definition format for expansion pack authors
 
-### Story 3.2: Agent Registry & Discovery
+### Story 3.2: Agent Discovery via VFS & Glob Tool
 
 As a **SDK developer**,
-I want **a central agent registry that discovers and indexes all available agents**,
-so that **sessions can lookup agents by ID and load their definitions**.
+I want **agents to be discoverable via glob patterns in the virtual filesystem**,
+so that **orchestrator agents can dynamically list and inspect available agents using standard tools**.
 
 #### Acceptance Criteria
 
-1. `AgentRegistry` class is implemented in `packages/core/src/agents/registry.ts`
-2. Registry has method `registry.register(agentDefinition)` to add agents
-3. Registry has method `registry.get(agentId): AgentDefinition` to retrieve agent by ID
-4. Registry has method `registry.list(): AgentDefinition[]` to list all registered agents
-5. Registry throws `AgentNotFoundError` if `get()` is called with unknown ID
-6. Registry prevents duplicate agent IDs (throws `DuplicateAgentError`)
-7. Registry is initialized in `BmadClient` constructor and exposed via `client.agents`
-8. Unit tests verify registration, retrieval, listing, and error cases
-9. Registry is thread-safe (uses Map for O(1) lookup)
+1. `glob_pattern` tool is implemented in FallbackToolExecutor for pattern-based file discovery
+2. Tool supports wildcards (`*`, `**`) and standard glob patterns via `minimatch` library
+3. Session automatically loads all agent files into VFS at `/.bmad-core/agents/*.md` on startup
+4. `loadAgentsIntoVFS()` method scans local `.bmad-core/agents/` and fallback `../bmad-export-author/`
+5. Agents can use `glob_pattern("/.bmad-core/agents/*.md")` to discover available agents
+6. Agents can use `read_file("/.bmad-core/agents/pm.md")` to inspect agent definitions
+7. Unit tests verify glob pattern matching with various patterns (17+ test cases)
+8. Integration test demonstrates orchestrator discovering agents via glob + read
+9. VFS-based discovery eliminates need for separate Registry class (simpler architecture)
 
-### Story 3.3: Core Agent Loading from .bmad-core/agents/
+### Story 3.3: Agent Definition Loading & Parsing
 
 As a **backend developer**,
-I want **the SDK to automatically load all core BMad agents on initialization**,
-so that **I can use PM, Architect, Dev, QA, and other agents without manual setup**.
+I want **the SDK to load and parse individual agent markdown files**,
+so that **sessions can execute agents with their defined personas and commands**.
 
 #### Acceptance Criteria
 
-1. `AgentLoader` class is implemented in `packages/core/src/agents/loader.ts`
-2. Loader has method `loader.loadFromDirectory(dirPath)` that scans for `*.md` files
-3. Loader reads each markdown file, parses agent definition, and registers with `AgentRegistry`
-4. BmadClient constructor calls `loader.loadFromDirectory('.bmad-core/agents/')` during initialization
-5. All 8 core agents (pm, po, architect, dev, qa, sm, analyst, ux-expert) are loaded successfully
-6. Loading errors (file read failures, parse errors) are logged but don't crash initialization
-7. Unit tests verify loading from test fixtures directory
-8. Integration test verifies core agents are available after client initialization
-9. Loader handles missing directory gracefully (logs warning but doesn't throw)
+1. `AgentLoader` class is implemented in `packages/core/src/agent-loader.ts`
+2. Loader has method `loadAgent(filePath)` that reads markdown file and parses YAML frontmatter
+3. Loader uses `gray-matter` to extract YAML frontmatter from markdown files
+4. Loader validates agent definition against Zod schema (from Story 3.1)
+5. Session's `loadAgent()` method uses AgentLoader to load specific agent by ID
+6. Loading errors (file not found, invalid YAML, schema violations) throw descriptive errors
+7. Unit tests verify loading valid agents and handling various error conditions (8 test cases)
+8. Loader supports fallback paths (local `.bmad-core/` and `../bmad-export-author/`)
+9. All core agents (pm, po, architect, dev, qa, sm, analyst, ux-expert, bmad-orchestrator) load successfully
 
 ### Story 3.4: Expansion Pack Agent Loading from NPM Packages
 
@@ -615,22 +615,22 @@ so that **I can extend BMad with community-contributed agents for specialized do
 9. Loader supports both ESM and CommonJS expansion pack formats
 10. Client method `client.loadExpansionPack(packageName)` allows dynamic loading after initialization
 
-### Story 3.5: Agent Metadata & Command Inspection
+### Story 3.5: Agent Metadata Inspection via Tools
 
 As a **backend developer**,
-I want **to inspect available agents and their commands programmatically**,
+I want **to inspect available agents using standard VFS tools**,
 so that **my application can present users with agent options dynamically**.
 
 #### Acceptance Criteria
 
-1. `client.agents.list()` returns array of agent metadata (id, title, icon, whenToUse, commands)
-2. `client.agents.get(agentId)` returns full agent definition including persona, dependencies, commands
-3. `client.agents.getCommands(agentId)` returns array of available commands for an agent
-4. Command metadata includes: command name, description, parameters (if any)
-5. Unit tests verify metadata retrieval for core agents
-6. Example script `packages/examples/list-agents.ts` demonstrates inspecting agents
-7. Metadata is typed with TypeScript for IDE autocomplete
-8. Documentation includes use case examples (building dynamic UI, CLI tools, etc.)
+1. Applications use `glob_pattern("/.bmad-core/agents/*.md")` to discover agent files in VFS
+2. Applications use `read_file(agentPath)` to load agent markdown content
+3. Applications parse YAML frontmatter using `gray-matter` to extract metadata
+4. Metadata includes: id, title, icon, whenToUse, commands, persona
+5. Unit tests verify VFS-based agent discovery and metadata extraction
+6. Example script `packages/examples/list-agents.ts` demonstrates tool-based inspection
+7. Documentation explains VFS-based approach vs traditional Registry pattern
+8. Orchestrator agent demonstrates dynamic agent listing in `*help` command
 
 ### Story 3.6: Agent Persona & System Prompt Generation
 
@@ -651,165 +651,7 @@ so that **agents behave according to their defined roles and principles**.
 
 ---
 
-## Epic 4: MCP Integration & Tool Orchestration
-
-**Expanded Goal:** Integrate Model Context Protocol (MCP) to leverage existing MCP servers for tool execution, implement MCP client with JSON-RPC 2.0 communication, discover and register tools from connected servers, route LLM tool calls to appropriate MCP servers, and provide backward-compatible fallback to built-in tools. This replaces custom tool implementations with a standardized, extensible architecture that supports filesystem access, database queries, API integrations, and command execution through MCP ecosystem.
-
-### Story 4.1: MCP Client Core Implementation
-
-As a **SDK developer**,
-I want **to implement an MCP protocol client**,
-so that **the SDK can connect to and communicate with MCP servers**.
-
-#### Acceptance Criteria
-
-1. `MCPClient` class is implemented in `packages/core/src/mcp/client.ts`
-2. Client implements JSON-RPC 2.0 message protocol per MCP specification
-3. Client supports stdio transport (spawn child process, communicate via stdin/stdout)
-4. Client supports SSE transport (HTTP connection with Server-Sent Events)
-5. Client sends `initialize` request on connection with client capabilities
-6. Client validates server response and stores server capabilities
-7. Client maintains connection state (connecting, connected, disconnected, error)
-8. Client provides `sendRequest(method, params)` method for JSON-RPC calls
-9. Client provides `sendNotification(method, params)` method for one-way messages
-10. Client handles JSON-RPC responses, matching request IDs to pending promises
-11. Unit tests verify message serialization, deserialization, and protocol compliance
-12. Unit tests mock stdio/SSE transports with test fixtures
-13. Client includes timeout handling (default: 30s per request)
-14. Client logs all protocol messages at debug level
-
-### Story 4.2: MCP Server Connection Manager
-
-As a **SDK developer**,
-I want **to manage connections to multiple MCP servers**,
-so that **the SDK can integrate tools from filesystem, database, and API servers**.
-
-#### Acceptance Criteria
-
-1. `MCPConnectionManager` class is implemented in `packages/core/src/mcp/connection-manager.ts`
-2. Manager accepts array of `MCPServerConfig` with fields: `name`, `command`, `args`, `env`, `transport` (stdio|sse)
-3. Manager spawns MCP server processes for stdio transport using `child_process.spawn()`
-4. Manager establishes HTTP connections for SSE transport
-5. Manager initializes each server connection using `MCPClient.connect()`
-6. Manager stores active connections in Map keyed by server name
-7. Manager provides `getConnection(name): MCPClient` method
-8. Manager handles server process crashes with automatic restart (configurable)
-9. Manager provides `shutdown()` method to gracefully close all connections
-10. Unit tests verify connection lifecycle with mock servers
-11. Integration test connects to real `@modelcontextprotocol/server-filesystem`
-
-### Story 4.3: MCP Tool Discovery & Registration
-
-As a **SDK developer**,
-I want **to automatically discover tools from all connected MCP servers**,
-so that **the SDK can provide LLMs with a unified tool catalog**.
-
-#### Acceptance Criteria
-
-1. `MCPToolRegistry` class is implemented in `packages/core/src/mcp/tool-registry.ts`
-2. Registry requests `tools/list` from each connected MCP server
-3. Registry parses tool schemas from MCP server responses
-4. Registry converts MCP tool schemas to Anthropic function call format
-5. Registry stores tool-to-server mapping for routing execution
-6. Registry provides `listTools(): Tool[]` returning all available tools
-7. Registry provides `getTool(name): Tool` for lookup
-8. Registry handles tools with duplicate names by namespacing (server name prefix)
-9. Unit tests verify tool discovery with mock MCP responses
-10. Integration test discovers tools from real filesystem MCP server
-11. Registry logs discovered tools at info level (name, description, server)
-
-### Story 4.4: MCP Tool Execution & Routing
-
-As a **SDK developer**,
-I want **to route LLM tool calls to the appropriate MCP server**,
-so that **agents can execute tools naturally during conversation**.
-
-#### Acceptance Criteria
-
-1. `MCPToolExecutor` class is implemented in `packages/core/src/mcp/tool-executor.ts`
-2. Executor accepts tool call from LLM (name + parameters)
-3. Executor looks up which MCP server provides the tool via registry
-4. Executor sends `tools/call` JSON-RPC request to appropriate server
-5. Executor waits for response and returns result to session
-6. Executor handles tool execution errors from MCP server
-7. Executor formats errors as LLM-compatible tool results
-8. Executor logs tool execution at debug level (server, tool, duration)
-9. Unit tests verify routing logic with multiple mock servers
-10. Integration test executes `read_file` tool via filesystem MCP server
-11. Executor supports timeout per tool call (default: 60s)
-
-### Story 4.5: MCP Server Configuration & Validation
-
-As a **backend developer**,
-I want **to configure MCP servers in BmadClient config**,
-so that **I can specify which tools/resources are available to agents**.
-
-#### Acceptance Criteria
-
-1. `BmadClientConfig` interface includes `mcpServers?: MCPServerConfig[]` field
-2. `MCPServerConfig` schema validates: `name` (string), `command` (string), `args` (string[]), `env` (Record<string, string>), `transport` ('stdio'|'sse')
-3. Config validation throws `ConfigurationError` for invalid server configs
-4. BmadClient initializes `MCPConnectionManager` with config during construction
-5. Example config in docs demonstrates filesystem, GitHub, and custom servers
-6. SDK logs each MCP server startup at info level
-7. Unit tests verify config validation with valid/invalid configs
-
-### Story 4.6: Fallback to Built-in Virtual Filesystem
-
-As a **backend developer**,
-I want **the SDK to provide built-in file tools if no MCP servers are configured**,
-so that **the SDK works out-of-box without external dependencies**.
-
-#### Acceptance Criteria
-
-1. `VirtualFileSystem` class is implemented as fallback in `packages/core/src/filesystem/vfs.ts`
-2. VFS provides in-memory file storage with Map-based implementation
-3. SDK creates built-in tools (Read, Write, Edit, Grep, Glob) if `mcpServers` is empty/undefined
-4. Built-in tools operate on VFS instead of real filesystem
-5. Session uses built-in tools when no MCP servers available
-6. Unit tests verify VFS CRUD operations
-7. Integration test demonstrates session execution with built-in tools (no MCP)
-8. Documentation explains when to use MCP vs built-in tools
-9. SDK logs warning if using fallback mode
-
-### Story 4.7: MCP Error Handling & Resilience
-
-As a **SDK developer**,
-I want **graceful handling of MCP server failures**,
-so that **sessions don't crash when MCP servers are unavailable or misbehaving**.
-
-#### Acceptance Criteria
-
-1. MCP client implements retry logic for transient errors (network timeout, server busy)
-2. Retry policy: 3 attempts, exponential backoff (1s, 2s, 4s)
-3. MCP client throws `MCPServerError` for permanent failures (server crashed, protocol violation)
-4. Session catches `MCPServerError` and formats as tool error for LLM
-5. Connection manager detects server crashes (process exit, stdin/stdout close)
-6. Connection manager attempts automatic restart of crashed servers (configurable)
-7. Connection manager logs server crashes at error level
-8. Unit tests verify retry logic with mock failing servers
-9. Integration test demonstrates recovery from temporary server unavailability
-
-### Story 4.8: MCP Integration Testing & Example Servers
-
-As a **backend developer**,
-I want **working examples of MCP server integration**,
-so that **I can quickly set up filesystem, database, and API access for my agents**.
-
-#### Acceptance Criteria
-
-1. Example config for `@modelcontextprotocol/server-filesystem` in docs/examples
-2. Example config for `@modelcontextprotocol/server-github` in docs/examples
-3. Custom MCP server example for Postgres in `packages/examples/custom-mcp-servers/postgres.ts`
-4. Postgres MCP server implements read-only queries with Row-Level Security
-5. Integration test suite includes tests against real MCP servers
-6. Documentation includes MCP setup guide with installation instructions
-7. Documentation explains security considerations (server permissions, whitelisting)
-8. Example demonstrates content-creation workflow with filesystem MCP + pandoc custom server
-
----
-
-## Epic 5: Template & Task Processing
+## Epic 4: Template & Task Processing
 
 **Expanded Goal:** Load YAML templates for structured document generation, parse template metadata and sections, execute task workflows from markdown files, implement elicitation logic for interactive document creation, and integrate templates/tasks with agent execution.
 
@@ -918,7 +760,7 @@ so that **generated documents are personalized and context-aware**.
 
 ---
 
-## Epic 6: Document Storage & Google Cloud Integration
+## Epic 5: Document Storage & Google Cloud Integration
 
 **Expanded Goal:** Implement the storage abstraction layer, integrate Google Cloud Storage SDK for persisting generated documents, support saving/loading documents by path, and provide storage configuration options for bucket names and authentication.
 
@@ -1030,7 +872,7 @@ so that **I can use the SDK without configuring GCS during development**.
 
 ---
 
-## Epic 7: Cost Tracking, Limits & Reporting
+## Epic 6: Cost Tracking, Limits & Reporting
 
 **Expanded Goal:** Implement comprehensive token usage tracking for all LLM API calls, calculate session costs based on provider pricing, enforce cost limits with clear errors, and provide detailed cost reports including per-model breakdowns at session completion.
 
@@ -1138,7 +980,7 @@ so that **I can validate budgets and inform users of expected expenses**.
 
 ---
 
-## Epic 8: Pause/Resume & Advanced Session Features
+## Epic 7: Pause/Resume & Advanced Session Features
 
 **Expanded Goal:** Build the pause/resume mechanism enabling sessions to pause when LLMs ask questions, emit question events to the application layer, accept user answers, persist session state for resumption, and maintain full conversation context across pause/resume cycles.
 
@@ -1246,7 +1088,7 @@ so that **users can continue interrupted workflows**.
 
 ---
 
-## Epic 9: Error Handling, Logging & Production Readiness
+## Epic 8: Error Handling, Logging & Production Readiness
 
 **Expanded Goal:** Implement comprehensive error handling for all failure modes (API errors, rate limits, authentication failures, storage errors), add structured logging with configurable levels, provide retry logic with exponential backoff, and ensure the SDK is production-ready with graceful degradation.
 
@@ -1355,7 +1197,7 @@ so that **I can validate configuration and monitor production deployments**.
 
 ---
 
-## Epic 10: TypeScript Support, Documentation & Examples
+## Epic 9: TypeScript Support, Documentation & Examples
 
 **Expanded Goal:** Finalize comprehensive TypeScript type definitions for all public APIs, generate API reference documentation from JSDoc comments, create developer guides covering all major features, build example applications demonstrating integration patterns, and ensure excellent developer experience.
 

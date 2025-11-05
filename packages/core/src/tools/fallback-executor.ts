@@ -1,4 +1,5 @@
 import type { Tool, ToolCall } from '../types.js';
+import { minimatch } from 'minimatch';
 
 /**
  * Virtual File in the in-memory filesystem
@@ -23,10 +24,11 @@ interface ToolResult {
 }
 
 /**
- * FallbackToolExecutor - Provides Claude Code-style tools without MCP servers
+ * FallbackToolExecutor - Provides Claude Code-style tools via in-memory VFS
  *
  * This executor provides an in-memory virtual filesystem and safe command execution
- * for testing and scenarios where MCP servers are not available.
+ * for all agent operations. Documents created in the VFS can be persisted to
+ * external storage (e.g., Google Cloud Storage) after session completion.
  */
 export class FallbackToolExecutor {
   private vfs: Map<string, VirtualFile> = new Map();
@@ -126,6 +128,25 @@ export class FallbackToolExecutor {
           required: ['command'],
         },
       },
+      {
+        name: 'glob_pattern',
+        description:
+          'Find files matching a glob pattern in the virtual filesystem. Supports wildcards like *.md, **/*.ts, etc. Use for discovering files dynamically.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            pattern: {
+              type: 'string',
+              description: 'Glob pattern to match files (e.g., "*.md", ".bmad-core/agents/*.md", "**/*.ts")',
+            },
+            path: {
+              type: 'string',
+              description: 'Base directory to search from (default: "/")',
+            },
+          },
+          required: ['pattern'],
+        },
+      },
     ];
   }
 
@@ -158,6 +179,12 @@ export class FallbackToolExecutor {
           return await this.executeBashCommand(
             toolCall.input['command'] as string,
             toolCall.input['description'] as string | undefined
+          );
+
+        case 'glob_pattern':
+          return await this.globPattern(
+            toolCall.input['pattern'] as string,
+            toolCall.input['path'] as string | undefined
           );
 
         default:
@@ -421,6 +448,54 @@ export class FallbackToolExecutor {
     return {
       success: true,
       content: args.join(' '),
+    };
+  }
+
+  /**
+   * Find files matching glob pattern in VFS
+   */
+  private async globPattern(pattern: string, basePath?: string): Promise<ToolResult> {
+    const base = basePath || '/';
+
+    // Normalize pattern to absolute path
+    let fullPattern = pattern;
+    if (!pattern.startsWith('/')) {
+      fullPattern = base.endsWith('/') ? `${base}${pattern}` : `${base}/${pattern}`;
+    }
+
+    // Find all matching files
+    const matches: string[] = [];
+
+    for (const [path] of this.vfs) {
+      // Skip directory markers
+      if (path.endsWith('/.directory')) continue;
+
+      // Check if path matches pattern
+      // Use matchBase option for patterns like *.md to match in any directory
+      if (minimatch(path, fullPattern, { matchBase: false, dot: true })) {
+        matches.push(path);
+      }
+    }
+
+    // Sort alphabetically for consistent output
+    matches.sort();
+
+    if (matches.length === 0) {
+      return {
+        success: true,
+        content: `No files matching pattern: ${fullPattern}`,
+        metadata: { count: 0, matches: [], pattern: fullPattern },
+      };
+    }
+
+    return {
+      success: true,
+      content: matches.join('\n'),
+      metadata: {
+        count: matches.length,
+        matches: matches,
+        pattern: fullPattern,
+      },
     };
   }
 
