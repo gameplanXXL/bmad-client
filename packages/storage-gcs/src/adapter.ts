@@ -7,8 +7,15 @@
  * - Key File Path
  */
 
-import { Storage, Bucket, File } from '@google-cloud/storage';
-import type { StorageAdapter, Document, StorageMetadata, StorageListOptions } from '@bmad/client';
+import { Storage, Bucket } from '@google-cloud/storage';
+import type {
+  StorageAdapter,
+  Document,
+  StorageMetadata,
+  StorageResult,
+  StorageQueryOptions,
+  StorageListResult,
+} from '@bmad/client';
 
 export interface GCSAdapterConfig {
   /**
@@ -52,13 +59,14 @@ export interface GCSAdapterConfig {
  * Custom error for GCS-specific failures
  */
 export class GCSStorageError extends Error {
-  constructor(
-    message: string,
-    public readonly code?: string,
-    public readonly cause?: Error
-  ) {
+  public readonly code?: string;
+  public override readonly cause?: Error;
+
+  constructor(message: string, code?: string, cause?: Error) {
     super(message);
     this.name = 'GCSStorageError';
+    this.code = code;
+    this.cause = cause;
   }
 }
 
@@ -142,7 +150,7 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
   /**
    * Save document to GCS bucket
    */
-  async save(document: Document, metadata: StorageMetadata): Promise<void> {
+  async save(document: Document, metadata: StorageMetadata): Promise<StorageResult> {
     const fullPath = this.getFullPath(document.path);
     const file = this.bucket.file(fullPath);
 
@@ -163,21 +171,27 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
           },
         },
       });
+
+      return {
+        success: true,
+        path: document.path,
+        metadata,
+      };
     } catch (error) {
-      throw new GCSStorageError(
-        `Failed to save document ${document.path}: ${(error as Error).message}`,
-        'SAVE_ERROR',
-        error as Error
-      );
+      return {
+        success: false,
+        path: document.path,
+        error: `Failed to save document: ${(error as Error).message}`,
+      };
     }
   }
 
   /**
    * Save multiple documents in batch
    */
-  async saveBatch(documents: Document[], metadata: StorageMetadata): Promise<void> {
+  async saveBatch(documents: Document[], metadata: StorageMetadata): Promise<StorageResult[]> {
     // GCS doesn't have a native batch API, so we'll save in parallel
-    await Promise.all(documents.map((doc) => this.save(doc, metadata)));
+    return Promise.all(documents.map((doc) => this.save(doc, metadata)));
   }
 
   /**
@@ -243,12 +257,18 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
   /**
    * Delete document from GCS bucket
    */
-  async delete(path: string): Promise<void> {
+  async delete(path: string): Promise<boolean> {
     const fullPath = this.getFullPath(path);
     const file = this.bucket.file(fullPath);
 
     try {
-      await file.delete({ ignoreNotFound: true });
+      const [exists] = await file.exists();
+      if (!exists) {
+        return false; // Document didn't exist
+      }
+
+      await file.delete();
+      return true; // Successfully deleted
     } catch (error) {
       throw new GCSStorageError(
         `Failed to delete document ${path}: ${(error as Error).message}`,
@@ -256,13 +276,6 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
         error as Error
       );
     }
-  }
-
-  /**
-   * Delete multiple documents in batch
-   */
-  async deleteBatch(paths: string[]): Promise<void> {
-    await Promise.all(paths.map((path) => this.delete(path)));
   }
 
   /**
@@ -277,10 +290,10 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
       const customMetadata = metadata.metadata || {};
 
       return {
-        sessionId: customMetadata.sessionId || 'unknown',
-        agentId: customMetadata.agentId || 'unknown',
-        command: customMetadata.command || 'unknown',
-        timestamp: parseInt(customMetadata.timestamp || '0', 10),
+        sessionId: String(customMetadata['sessionId'] || 'unknown'),
+        agentId: String(customMetadata['agentId'] || 'unknown'),
+        command: String(customMetadata['command'] || 'unknown'),
+        timestamp: parseInt(String(customMetadata['timestamp'] || '0'), 10),
       };
     } catch (error) {
       if ((error as any).code === 404) {
@@ -297,11 +310,7 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
   /**
    * List documents matching criteria
    */
-  async list(options?: StorageListOptions): Promise<{
-    documents: Array<{ path: string; content: string; metadata: StorageMetadata }>;
-    hasMore: boolean;
-    nextToken?: string;
-  }> {
+  async list(options?: StorageQueryOptions): Promise<StorageListResult> {
     try {
       // Build query options
       const queryOptions: any = {
@@ -312,17 +321,17 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
         queryOptions.maxResults = options.limit;
       }
 
-      if (options?.nextToken) {
-        queryOptions.pageToken = options.nextToken;
+      if (options?.offset) {
+        // GCS doesn't support offset directly, so we skip it in query
+        // Client would need to handle offset via pagination tokens
       }
 
-      // List files
-      const [files, , response] = await this.bucket.getFiles(queryOptions);
+      // List files (metadata only, no content download for performance)
+      const [files, query] = await this.bucket.getFiles(queryOptions);
 
-      // Load content and metadata for each file
+      // Get metadata for each file (without downloading content)
       const documents = await Promise.all(
         files.map(async (file) => {
-          const [content] = await file.download();
           const [metadata] = await file.getMetadata();
           const customMetadata = metadata.metadata || {};
 
@@ -337,12 +346,11 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
 
           return {
             path,
-            content: content.toString('utf-8'),
             metadata: {
-              sessionId: customMetadata.sessionId || 'unknown',
-              agentId: customMetadata.agentId || 'unknown',
-              command: customMetadata.command || 'unknown',
-              timestamp: parseInt(customMetadata.timestamp || '0', 10),
+              sessionId: String(customMetadata['sessionId'] || 'unknown'),
+              agentId: String(customMetadata['agentId'] || 'unknown'),
+              command: String(customMetadata['command'] || 'unknown'),
+              timestamp: parseInt(String(customMetadata['timestamp'] || '0'), 10),
             },
           };
         })
@@ -359,8 +367,8 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
 
       return {
         documents: filteredDocs,
-        hasMore: !!response?.nextPageToken,
-        nextToken: response?.nextPageToken,
+        total: filteredDocs.length,
+        hasMore: !!query?.pageToken,
       };
     } catch (error) {
       throw new GCSStorageError(
@@ -369,6 +377,69 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
         error as Error
       );
     }
+  }
+
+  /**
+   * Get signed URL for document
+   *
+   * @param path - Document path
+   * @param expiresIn - URL expiration in seconds (default: 3600 = 1 hour)
+   * @returns Signed URL for document access
+   */
+  async getUrl(path: string, expiresIn: number = 3600): Promise<string | undefined> {
+    const fullPath = this.getFullPath(path);
+    const file = this.bucket.file(fullPath);
+
+    try {
+      const [exists] = await file.exists();
+      if (!exists) {
+        return undefined;
+      }
+
+      const [url] = await file.getSignedUrl({
+        version: 'v4',
+        action: 'read',
+        expires: Date.now() + expiresIn * 1000,
+      });
+
+      return url;
+    } catch (error) {
+      // If signing fails (e.g., no credentials), return undefined
+      return undefined;
+    }
+  }
+
+  /**
+   * Initialize storage (verify bucket exists and is accessible)
+   */
+  async initialize(): Promise<void> {
+    try {
+      const [exists] = await this.bucket.exists();
+
+      if (!exists) {
+        throw new GCSStorageError(
+          `Bucket ${this.bucket.name} does not exist. Please create it first.`,
+          'BUCKET_NOT_FOUND'
+        );
+      }
+    } catch (error) {
+      if (error instanceof GCSStorageError) {
+        throw error;
+      }
+      throw new GCSStorageError(
+        `Failed to initialize GCS storage: ${(error as Error).message}`,
+        'INIT_ERROR',
+        error as Error
+      );
+    }
+  }
+
+  /**
+   * Close storage connection and clean up resources
+   */
+  async close(): Promise<void> {
+    // GCS Storage client doesn't require explicit cleanup
+    // Connection pooling is handled automatically
   }
 
   /**
