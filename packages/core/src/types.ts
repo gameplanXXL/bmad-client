@@ -83,26 +83,32 @@ export interface AgentDefinition {
   agent: {
     name: string;
     id: string;
-    title: string;
-    icon: string;
-    whenToUse: string;
+    title?: string;
+    icon?: string;
+    whenToUse?: string;
     customization?: string;
   };
-  persona: {
+  persona?: {
     role: string;
     style: string;
     identity: string;
     focus: string;
     core_principles: string[];
   };
-  commands: string[];
-  dependencies: {
+  // Commands can be either string array, object array, or mixed
+  commands?: string[] | Record<string, string>[] | (string | Record<string, string>)[];
+  dependencies?: {
     tasks?: string[];
     templates?: string[];
     checklists?: string[];
     data?: string[];
+    utils?: string[];
+    workflows?: string[];
   };
   activation_instructions?: string[];
+  // Meta fields used by BMad orchestration (flexible types)
+  'IDE-FILE-RESOLUTION'?: unknown;
+  'REQUEST-RESOLUTION'?: unknown;
 }
 
 // ============================================================================
@@ -115,6 +121,8 @@ export interface SessionOptions {
   context?: Record<string, unknown>;
   parentSessionId?: string; // Set when this is a child session
   isSubAgent?: boolean; // True if this session is invoked by another agent
+  autoSave?: boolean; // Auto-save session state after each API call (default: false)
+  autoSaveInterval?: number; // Auto-save interval in milliseconds (default: after each API call)
 }
 
 export interface SessionResult {
@@ -167,6 +175,63 @@ export interface Question {
 }
 
 export type SessionStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'timeout';
+
+/**
+ * Serialized session state for persistence and recovery
+ */
+export interface SessionState {
+  // Session identity
+  id: string;
+  agentId: string;
+  command: string;
+  status: SessionStatus;
+
+  // Timestamps
+  createdAt: number;
+  startedAt?: number;
+  pausedAt?: number;
+  completedAt?: number;
+
+  // Conversation state
+  messages: Message[];
+
+  // VFS state
+  vfsFiles: Record<string, string>; // path -> content
+
+  // Cost tracking
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCost: number;
+  apiCallCount: number;
+  childSessionCosts: ChildSessionCost[];
+
+  // Pause/resume state
+  pendingQuestion?: {
+    question: string;
+    context?: string;
+  };
+
+  // Options
+  options: SessionOptions;
+
+  // Provider info (for recreation)
+  providerType: 'anthropic' | 'custom';
+  modelName?: string;
+}
+
+/**
+ * Serialized conversational session state
+ */
+export interface ConversationalSessionState extends SessionState {
+  // Conversation history
+  turns: ConversationTurn[];
+
+  // Conversational status
+  conversationalStatus: ConversationalStatus;
+
+  // Current processing state
+  currentUserMessage?: string;
+}
 
 // ============================================================================
 // Conversational Session Types

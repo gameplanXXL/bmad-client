@@ -1,4 +1,4 @@
-import type { Document } from '../types.js';
+import type { Document, SessionState } from '../types.js';
 
 /**
  * Storage adapter configuration
@@ -168,6 +168,60 @@ export interface StorageAdapter {
    * Clean up resources
    */
   close(): Promise<void>;
+
+  /**
+   * Save session state to storage
+   *
+   * Saves the complete session state as JSON for recovery and persistence.
+   * State is stored at: /sessions/{sessionId}/state.json
+   *
+   * @param state - Session state to save
+   * @returns Storage result with URL
+   */
+  saveSessionState(state: SessionState): Promise<StorageResult>;
+
+  /**
+   * Load session state from storage
+   *
+   * @param sessionId - Session ID to load
+   * @returns Session state
+   * @throws StorageNotFoundError if session state doesn't exist
+   */
+  loadSessionState(sessionId: string): Promise<SessionState>;
+
+  /**
+   * List all saved sessions
+   *
+   * @param options - Query options (filter by agentId, date range, etc.)
+   * @returns List of session states with metadata
+   */
+  listSessions(options?: StorageQueryOptions): Promise<SessionListResult>;
+
+  /**
+   * Delete session state
+   *
+   * @param sessionId - Session ID to delete
+   * @returns true if deleted, false if not found
+   */
+  deleteSession(sessionId: string): Promise<boolean>;
+}
+
+/**
+ * Session listing result
+ */
+export interface SessionListResult {
+  sessions: Array<{
+    sessionId: string;
+    agentId: string;
+    command: string;
+    status: string;
+    createdAt: number;
+    completedAt?: number;
+    documentCount: number;
+    totalCost: number;
+  }>;
+  total: number;
+  hasMore: boolean;
 }
 
 /**

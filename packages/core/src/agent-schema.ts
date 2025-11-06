@@ -24,15 +24,28 @@ export const AgentDefinitionSchema = z.object({
     focus: z.string(),
     core_principles: z.array(z.string()),
   }).optional(),
-  commands: z.array(z.string()).optional(),
+  // Commands can be either:
+  // 1. String array (Core agents): ['*help', '*plan']
+  // 2. Object array (Expansion Pack agents): [{ help: 'Show commands' }]
+  // 3. Mixed array (some strings, some objects)
+  commands: z.union([
+    z.array(z.string()),
+    z.array(z.record(z.string(), z.string())),
+    z.array(z.union([z.string(), z.record(z.string(), z.string())])),
+  ]).optional(),
   tools: z.array(z.string()).optional(),
   dependencies: z.object({
     tasks: z.array(z.string()).optional(),
     templates: z.array(z.string()).optional(),
     checklists: z.array(z.string()).optional(),
     data: z.array(z.string()).optional(),
+    utils: z.array(z.string()).optional(),
+    workflows: z.array(z.string()).optional(),
   }).optional(),
   activation_instructions: z.array(z.string()).optional(),
+  // Meta fields used by BMad orchestration (flexible schema)
+  'IDE-FILE-RESOLUTION': z.any().optional(),
+  'REQUEST-RESOLUTION': z.any().optional(),
 });
 
 export type ParsedAgentDefinition = z.infer<typeof AgentDefinitionSchema>;

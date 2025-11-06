@@ -1,10 +1,11 @@
-import type { Document } from '../types.js';
+import type { Document, SessionState } from '../types.js';
 import type {
   StorageAdapter,
   StorageMetadata,
   StorageResult,
   StorageQueryOptions,
   StorageListResult,
+  SessionListResult,
 } from './types.js';
 import { StorageNotFoundError } from './types.js';
 
@@ -41,6 +42,7 @@ interface MemoryEntry {
  */
 export class InMemoryStorageAdapter implements StorageAdapter {
   private storage: Map<string, MemoryEntry> = new Map();
+  private sessions: Map<string, SessionState> = new Map();
 
   /**
    * Initialize storage (no-op for memory)
@@ -202,6 +204,103 @@ export class InMemoryStorageAdapter implements StorageAdapter {
    */
   async close(): Promise<void> {
     this.storage.clear();
+    this.sessions.clear();
+  }
+
+  /**
+   * Save session state to memory
+   */
+  async saveSessionState(state: SessionState): Promise<StorageResult> {
+    try {
+      // Deep clone to avoid mutations
+      this.sessions.set(state.id, JSON.parse(JSON.stringify(state)));
+
+      return {
+        success: true,
+        path: `/sessions/${state.id}/state.json`,
+        metadata: {
+          sessionId: state.id,
+          agentId: state.agentId,
+          command: state.command,
+          timestamp: state.createdAt,
+          size: JSON.stringify(state).length,
+          mimeType: 'application/json',
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        path: `/sessions/${state.id}/state.json`,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Load session state from memory
+   */
+  async loadSessionState(sessionId: string): Promise<SessionState> {
+    const state = this.sessions.get(sessionId);
+
+    if (!state) {
+      throw new StorageNotFoundError(`/sessions/${sessionId}/state.json`);
+    }
+
+    // Deep clone to avoid mutations
+    return JSON.parse(JSON.stringify(state));
+  }
+
+  /**
+   * List all saved sessions
+   */
+  async listSessions(options?: StorageQueryOptions): Promise<SessionListResult> {
+    let states = Array.from(this.sessions.values());
+
+    // Apply filters
+    if (options?.agentId) {
+      states = states.filter((state) => state.agentId === options.agentId);
+    }
+
+    if (options?.startDate) {
+      const startTime = options.startDate.getTime();
+      states = states.filter((state) => state.createdAt >= startTime);
+    }
+
+    if (options?.endDate) {
+      const endTime = options.endDate.getTime();
+      states = states.filter((state) => state.createdAt <= endTime);
+    }
+
+    const total = states.length;
+
+    // Apply pagination
+    const offset = options?.offset || 0;
+    const limit = options?.limit || 100;
+    const paginatedStates = states.slice(offset, offset + limit);
+
+    const sessions = paginatedStates.map((state) => ({
+      sessionId: state.id,
+      agentId: state.agentId,
+      command: state.command,
+      status: state.status,
+      createdAt: state.createdAt,
+      completedAt: state.completedAt,
+      documentCount: Object.keys(state.vfsFiles).length,
+      totalCost: state.totalCost,
+    }));
+
+    return {
+      sessions,
+      total,
+      hasMore: offset + limit < total,
+    };
+  }
+
+  /**
+   * Delete session state from memory
+   */
+  async deleteSession(sessionId: string): Promise<boolean> {
+    return this.sessions.delete(sessionId);
   }
 
   /**

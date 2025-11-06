@@ -1,5 +1,6 @@
 import type { Tool, ToolCall } from '../types.js';
 import { minimatch } from 'minimatch';
+import { CommandExecutor, type CommandConfig } from './command-executor.js';
 
 /**
  * Virtual File in the in-memory filesystem
@@ -33,12 +34,29 @@ interface ToolResult {
 export class FallbackToolExecutor {
   private vfs: Map<string, VirtualFile> = new Map();
   private session?: any; // Session reference (set after construction to avoid circular dependency)
+  private commandExecutor?: CommandExecutor; // Optional command executor for execute_command tool
 
   /**
    * Set session reference (needed for invoke_agent)
    */
   setSession(session: any): void {
     this.session = session;
+  }
+
+  /**
+   * Configure command executor for execute_command tool
+   *
+   * @param config - Command executor configuration (whitelist, timeout, etc.)
+   */
+  setCommandExecutor(config?: CommandConfig): void {
+    this.commandExecutor = new CommandExecutor(config);
+  }
+
+  /**
+   * Check if command execution is enabled
+   */
+  isCommandExecutionEnabled(): boolean {
+    return this.commandExecutor !== undefined;
   }
 
   /**
@@ -156,6 +174,45 @@ export class FallbackToolExecutor {
         },
       },
       {
+        name: 'execute_command',
+        description: `Execute a whitelisted system command for content generation and asset processing.
+
+Supported commands include:
+- pandoc: Document conversion (Markdown to PDF, HTML, DOCX, etc.)
+- pdflatex, xelatex, lualatex: LaTeX compilation
+- wkhtmltopdf: HTML to PDF conversion
+- convert: Image format conversion (ImageMagick)
+- make: Build automation
+- npm, node: JavaScript build scripts
+- python: Python scripts for data processing
+
+Examples:
+- Convert Markdown to PDF: execute_command("pandoc", ["input.md", "-o", "output.pdf", "--pdf-engine=xelatex"])
+- Compile LaTeX: execute_command("pdflatex", ["document.tex"])
+- HTML to PDF: execute_command("wkhtmltopdf", ["page.html", "output.pdf"])
+
+Note: Commands must be in the whitelist. Configure whitelist via setCommandExecutor().`,
+        input_schema: {
+          type: 'object',
+          properties: {
+            command: {
+              type: 'string',
+              description: 'Command to execute (must be in whitelist)',
+            },
+            args: {
+              type: 'array',
+              description: 'Command arguments as array of strings',
+              items: { type: 'string' },
+            },
+            working_directory: {
+              type: 'string',
+              description: 'Working directory for command execution (optional)',
+            },
+          },
+          required: ['command'],
+        },
+      },
+      {
         name: 'invoke_agent',
         description: `Invoke a specialized BMad agent to handle a specific task. Use this for delegating work to expert agents like PM, Architect, Dev, QA, etc.
 
@@ -262,6 +319,13 @@ Examples:
             toolCall.input['agent_id'] as string,
             toolCall.input['command'] as string,
             toolCall.input['context'] as Record<string, unknown> | undefined
+          );
+
+        case 'execute_command':
+          return await this.executeCommand(
+            toolCall.input['command'] as string,
+            toolCall.input['args'] as string[] | undefined,
+            toolCall.input['working_directory'] as string | undefined
           );
 
         default:
@@ -812,6 +876,57 @@ Examples:
       return {
         success: false,
         error: `ask_user failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+
+  /**
+   * Execute a whitelisted system command
+   */
+  private async executeCommand(
+    command: string,
+    args?: string[],
+    workingDirectory?: string
+  ): Promise<ToolResult> {
+    if (!this.commandExecutor) {
+      return {
+        success: false,
+        error: 'Command execution is not enabled. Configure CommandExecutor via setCommandExecutor().',
+      };
+    }
+
+    try {
+      const options: Partial<import('./command-executor.js').CommandConfig> = {};
+      if (workingDirectory) {
+        options.workingDirectory = workingDirectory;
+      }
+
+      const result = await this.commandExecutor.execute(command, args || [], options);
+
+      // Format result as JSON for the LLM
+      const output = JSON.stringify({
+        success: result.success,
+        stdout: result.stdout,
+        stderr: result.stderr,
+        exitCode: result.exitCode,
+        duration: result.duration,
+        timedOut: result.timedOut,
+      }, null, 2);
+
+      return {
+        success: result.success,
+        content: output,
+        metadata: {
+          command: result.command,
+          args: result.args,
+          exitCode: result.exitCode,
+          duration: result.duration,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `execute_command failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       };
     }
   }

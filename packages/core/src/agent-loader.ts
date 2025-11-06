@@ -1,6 +1,7 @@
 import { readFile, readdir, stat } from 'fs/promises';
 import { join, extname } from 'path';
 import matter from 'gray-matter';
+import { load as yamlLoad } from 'js-yaml';
 import { AgentDefinitionSchema } from './agent-schema.js';
 import type { AgentDefinition, Logger } from './types.js';
 
@@ -137,14 +138,31 @@ export class AgentLoader {
 
   /**
    * Parse agent definition from markdown file content
+   * Supports two formats:
+   * 1. YAML Frontmatter (---\nyaml\n---) - Core agents
+   * 2. Code Block YAML (```yaml\nyaml\n```) - Expansion Pack agents
    */
   private parseAgentFile(content: string, filePath: string): AgentDefinition {
     try {
-      // Parse YAML frontmatter
+      let yamlData: Record<string, unknown> = {};
+
+      // Try YAML Frontmatter first (Core agent format)
       const { data } = matter(content);
 
+      if (data && Object.keys(data).length > 0) {
+        yamlData = data;
+      } else {
+        // Try Code Block YAML format (Expansion Pack format)
+        const codeBlockMatch = content.match(/```yaml\n([\s\S]*?)\n```/);
+
+        if (codeBlockMatch && codeBlockMatch[1]) {
+          // Parse YAML from code block
+          yamlData = yamlLoad(codeBlockMatch[1]) as Record<string, unknown>;
+        }
+      }
+
       // Validate with Zod schema
-      const parsed = AgentDefinitionSchema.parse(data);
+      const parsed = AgentDefinitionSchema.parse(yamlData);
 
       // Return as AgentDefinition
       return parsed as AgentDefinition;

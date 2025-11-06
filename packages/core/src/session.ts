@@ -44,6 +44,7 @@ export class BmadSession extends EventEmitter {
   // Legacy tracking (TODO: Remove after full CostTracker integration)
   private totalInputTokens = 0;
   private totalOutputTokens = 0;
+  private totalCost = 0;
   private apiCallCount = 0;
   private childSessionCosts: ChildSessionCost[] = [];
 
@@ -157,6 +158,11 @@ export class BmadSession extends EventEmitter {
           role: 'assistant',
           content: response.message.content,
         });
+
+        // Auto-save session state if enabled
+        if (this.options.autoSave) {
+          await this.autoSaveState();
+        }
 
         // Check stop reason
         if (response.stopReason === 'end_turn' || response.stopReason === 'stop_sequence') {
@@ -275,6 +281,11 @@ export class BmadSession extends EventEmitter {
         apiCalls: this.apiCallCount,
       });
 
+      // Final auto-save with completed status
+      if (this.options.autoSave) {
+        await this.autoSaveState();
+      }
+
       return result;
     } catch (error) {
       this.status = 'failed';
@@ -290,6 +301,11 @@ export class BmadSession extends EventEmitter {
         sessionId: this.id,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
+
+      // Final auto-save with failed status
+      if (this.options.autoSave) {
+        await this.autoSaveState();
+      }
 
       this.emit('failed', error);
       return result;
@@ -937,5 +953,194 @@ Result: ${result.result}`;
         limit: data.limit.toFixed(2),
       });
     });
+  }
+
+  /**
+   * Auto-save session state to storage (if configured)
+   * Called automatically after each API call if autoSave is enabled
+   */
+  private async autoSaveState(): Promise<void> {
+    const storage = this.client.getStorage();
+    if (!storage) {
+      return; // No storage configured
+    }
+
+    try {
+      const state = this.serialize();
+      await storage.saveSessionState(state);
+
+      this.client.getLogger().debug('Session state auto-saved', {
+        sessionId: this.id,
+        status: this.status,
+        messageCount: this.messages.length,
+      });
+    } catch (error) {
+      this.client.getLogger().warn('Auto-save failed', {
+        sessionId: this.id,
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
+    }
+  }
+
+  /**
+   * Serialize session state for persistence
+   *
+   * Captures complete session state including:
+   * - Conversation history (messages)
+   * - VFS state (all files)
+   * - Cost tracking data
+   * - Pause/resume state
+   *
+   * @returns Serialized session state
+   *
+   * @example
+   * ```typescript
+   * const session = await client.startAgent('pm', 'create-prd');
+   *
+   * // During execution, pause and serialize
+   * const state = session.serialize();
+   *
+   * // Save to storage
+   * await storage.save(
+   *   { path: `/sessions/${session.id}.json`, content: JSON.stringify(state) },
+   *   { sessionId: session.id, agentId: 'pm', command: 'create-prd', timestamp: Date.now() }
+   * );
+   * ```
+   */
+  serialize(): import('./types.js').SessionState {
+    // Get all VFS files
+    const vfsFiles: Record<string, string> = {};
+    const documents = this.toolExecutor.getDocuments();
+    for (const doc of documents) {
+      vfsFiles[doc.path] = doc.content;
+    }
+
+    // Calculate total cost (prefer costTracker if available, otherwise use legacy field)
+    const totalCost = this.costTracker ? this.costTracker.getTotalCost() : this.totalCost;
+
+    return {
+      // Identity
+      id: this.id,
+      agentId: this.agentId,
+      command: this.command,
+      status: this.status,
+
+      // Timestamps
+      createdAt: this.startTime || Date.now(),
+      startedAt: this.startTime,
+      pausedAt: this.status === 'paused' ? Date.now() : undefined,
+      completedAt: this.status === 'completed' ? Date.now() : undefined,
+
+      // Conversation
+      messages: this.messages,
+
+      // VFS
+      vfsFiles,
+
+      // Cost tracking
+      totalInputTokens: this.totalInputTokens,
+      totalOutputTokens: this.totalOutputTokens,
+      totalCost,
+      apiCallCount: this.apiCallCount,
+      childSessionCosts: this.childSessionCosts,
+
+      // Pause/resume
+      pendingQuestion: this.pendingQuestion
+        ? {
+            question: this.pendingQuestion.question,
+            context: this.pendingQuestion.context,
+          }
+        : undefined,
+
+      // Options
+      options: this.options,
+
+      // Provider info
+      providerType: this.provider instanceof AnthropicProvider ? 'anthropic' : 'custom',
+      modelName: this.provider?.getModelInfo().name,
+    };
+  }
+
+  /**
+   * Deserialize and restore session from saved state
+   *
+   * Creates a new session instance from serialized state, restoring:
+   * - All conversation messages
+   * - Complete VFS state
+   * - Cost tracking data
+   * - Pause/resume state
+   *
+   * @param client - BmadClient instance to use for restored session
+   * @param state - Serialized session state
+   * @returns Restored session instance
+   *
+   * @example
+   * ```typescript
+   * // Load state from storage
+   * const stateDoc = await storage.load(`/sessions/${sessionId}.json`);
+   * const state = JSON.parse(stateDoc.content);
+   *
+   * // Restore session
+   * const session = BmadSession.deserialize(client, state);
+   *
+   * // Continue execution
+   * if (session.getStatus() === 'paused' && state.pendingQuestion) {
+   *   await session.answer('User response');
+   * }
+   *
+   * const result = await session.execute();
+   * ```
+   */
+  static async deserialize(
+    client: BmadClient,
+    state: import('./types.js').SessionState
+  ): Promise<BmadSession> {
+    // Create new session with same ID and options
+    const session = new BmadSession(client, state.agentId, state.command, state.options);
+
+    // Restore session ID (override generated one)
+    (session as any).id = state.id;
+
+    // Restore status
+    session.status = state.status;
+
+    // Restore timestamps
+    (session as any).startTime = state.startedAt || state.createdAt;
+
+    // Restore messages
+    session.messages = state.messages;
+
+    // Restore VFS
+    session.toolExecutor.initializeFiles(state.vfsFiles);
+
+    // Restore cost tracking
+    session.totalInputTokens = state.totalInputTokens;
+    session.totalOutputTokens = state.totalOutputTokens;
+    session.totalCost = state.totalCost;
+    session.apiCallCount = state.apiCallCount;
+    session.childSessionCosts = state.childSessionCosts;
+
+    // Restore pending question state
+    if (state.pendingQuestion) {
+      // Create promise for answer
+      new Promise<string>((resolve, reject) => {
+        (session as any).pendingQuestion = {
+          question: state.pendingQuestion!.question,
+          context: state.pendingQuestion!.context,
+          resolve,
+          reject,
+        };
+      });
+    }
+
+    client.getLogger().info('Session restored from state', {
+      sessionId: session.id,
+      agentId: session.agentId,
+      status: session.status,
+      messageCount: session.messages.length,
+      vfsFileCount: Object.keys(state.vfsFiles).length,
+    });
+
+    return session;
   }
 }

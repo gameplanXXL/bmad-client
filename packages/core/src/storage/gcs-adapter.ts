@@ -1,10 +1,11 @@
-import type { Document } from '../types.js';
+import type { Document, SessionState } from '../types.js';
 import type {
   StorageAdapter,
   StorageMetadata,
   StorageResult,
   StorageQueryOptions,
   StorageListResult,
+  SessionListResult,
 } from './types.js';
 import { StorageNotFoundError, StorageError } from './types.js';
 
@@ -407,6 +408,197 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
       return path.substring(this.config.prefix.length);
     }
     return path;
+  }
+
+  /**
+   * Save session state to GCS
+   */
+  async saveSessionState(state: SessionState): Promise<StorageResult> {
+    this.ensureInitialized();
+
+    try {
+      // Store session state as JSON in a dedicated /sessions/ path
+      const path = `/sessions/${state.id}/state.json`;
+      const gcsPath = this.prefixPath(path);
+      const file = this.bucket!.file(gcsPath);
+
+      // Serialize state to JSON
+      const content = JSON.stringify(state, null, 2);
+
+      // Upload state with metadata
+      await file.save(content, {
+        metadata: {
+          contentType: 'application/json',
+          metadata: {
+            sessionId: state.id,
+            agentId: state.agentId,
+            command: state.command,
+            status: state.status,
+            createdAt: state.createdAt.toString(),
+            completedAt: state.completedAt?.toString(),
+            documentCount: Object.keys(state.vfsFiles).length.toString(),
+            totalCost: state.totalCost.toString(),
+          },
+        },
+      });
+
+      return {
+        success: true,
+        path,
+        metadata: {
+          sessionId: state.id,
+          agentId: state.agentId,
+          command: state.command,
+          timestamp: Date.now(),
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        path: `/sessions/${state.id}/state.json`,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Load session state from GCS
+   */
+  async loadSessionState(sessionId: string): Promise<SessionState> {
+    this.ensureInitialized();
+
+    try {
+      const path = `/sessions/${sessionId}/state.json`;
+      const gcsPath = this.prefixPath(path);
+      const file = this.bucket!.file(gcsPath);
+
+      const [exists] = await file.exists();
+      if (!exists) {
+        throw new StorageNotFoundError(path);
+      }
+
+      const [content] = await file.download();
+      const state = JSON.parse(content.toString('utf-8')) as SessionState;
+
+      return state;
+    } catch (error) {
+      if (error instanceof StorageNotFoundError) {
+        throw error;
+      }
+
+      throw new StorageError(
+        `Failed to load session state: ${sessionId}`,
+        'LOAD_ERROR',
+        error
+      );
+    }
+  }
+
+  /**
+   * List all saved sessions
+   */
+  async listSessions(options?: StorageQueryOptions): Promise<SessionListResult> {
+    this.ensureInitialized();
+
+    try {
+      // List all files in /sessions/ directory
+      const prefix = this.prefixPath('/sessions/');
+      const [files] = await this.bucket!.getFiles({ prefix });
+
+      // Filter to only state.json files
+      const stateFiles = files.filter((file: any) => file.name.endsWith('state.json'));
+
+      // Load metadata for each session
+      const sessionsWithMetadata = await Promise.all(
+        stateFiles.map(async (file: any) => {
+          const [metadata] = await file.getMetadata();
+          return {
+            file,
+            sessionId: metadata.metadata?.sessionId || '',
+            agentId: metadata.metadata?.agentId || '',
+            command: metadata.metadata?.command || '',
+            status: metadata.metadata?.status || '',
+            createdAt: parseInt(metadata.metadata?.createdAt || '0'),
+            completedAt: metadata.metadata?.completedAt
+              ? parseInt(metadata.metadata.completedAt)
+              : undefined,
+            documentCount: parseInt(metadata.metadata?.documentCount || '0'),
+            totalCost: parseFloat(metadata.metadata?.totalCost || '0'),
+          };
+        })
+      );
+
+      // Apply filters
+      let filteredSessions = sessionsWithMetadata;
+
+      if (options?.agentId) {
+        filteredSessions = filteredSessions.filter((s) => s.agentId === options.agentId);
+      }
+
+      if (options?.startDate) {
+        filteredSessions = filteredSessions.filter(
+          (s) => s.createdAt >= options.startDate!.getTime()
+        );
+      }
+
+      if (options?.endDate) {
+        filteredSessions = filteredSessions.filter(
+          (s) => s.createdAt <= options.endDate!.getTime()
+        );
+      }
+
+      // Sort by creation date (newest first)
+      filteredSessions.sort((a, b) => b.createdAt - a.createdAt);
+
+      // Apply pagination
+      const offset = options?.offset || 0;
+      const limit = options?.limit || 100;
+      const paginatedSessions = filteredSessions.slice(offset, offset + limit);
+
+      return {
+        sessions: paginatedSessions.map((s) => ({
+          sessionId: s.sessionId,
+          agentId: s.agentId,
+          command: s.command,
+          status: s.status,
+          createdAt: s.createdAt,
+          completedAt: s.completedAt,
+          documentCount: s.documentCount,
+          totalCost: s.totalCost,
+        })),
+        total: filteredSessions.length,
+        hasMore: offset + limit < filteredSessions.length,
+      };
+    } catch (error) {
+      throw new StorageError('Failed to list sessions', 'LIST_ERROR', error);
+    }
+  }
+
+  /**
+   * Delete session state from GCS
+   */
+  async deleteSession(sessionId: string): Promise<boolean> {
+    this.ensureInitialized();
+
+    try {
+      const path = `/sessions/${sessionId}/state.json`;
+      const gcsPath = this.prefixPath(path);
+      const file = this.bucket!.file(gcsPath);
+
+      const [exists] = await file.exists();
+      if (!exists) {
+        return false;
+      }
+
+      await file.delete();
+      return true;
+    } catch (error) {
+      throw new StorageError(
+        `Failed to delete session: ${sessionId}`,
+        'DELETE_ERROR',
+        error
+      );
+    }
   }
 
   /**

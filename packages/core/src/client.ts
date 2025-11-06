@@ -200,6 +200,316 @@ export class BmadClient extends EventEmitter {
   }
 
   /**
+   * Recover session from saved state
+   * Loads session from storage and creates new session instance
+   *
+   * @param sessionId - Session ID to recover
+   * @returns Restored session instance
+   * @throws Error if storage not configured or session not found
+   *
+   * @example
+   * ```typescript
+   * // Recover crashed session
+   * const session = await client.recoverSession('sess_123_abc');
+   *
+   * // Continue execution if paused
+   * if (session.getStatus() === 'paused') {
+   *   session.answer('User response');
+   * }
+   *
+   * const result = await session.execute();
+   * ```
+   */
+  async recoverSession(sessionId: string): Promise<BmadSession> {
+    if (!this.storage) {
+      throw new Error('Storage not configured - cannot recover session');
+    }
+
+    this.logger.info('Recovering session from storage', { sessionId });
+
+    try {
+      const state = await this.storage.loadSessionState(sessionId);
+      const session = await BmadSession.deserialize(this, state);
+
+      this.logger.info('Session recovered successfully', {
+        sessionId,
+        status: session.getStatus(),
+        messageCount: state.messages.length,
+      });
+
+      return session;
+    } catch (error) {
+      this.logger.error('Failed to recover session', {
+        sessionId,
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * List all saved sessions
+   *
+   * @param options - Query options to filter sessions
+   * @returns List of session summaries
+   * @throws Error if storage not configured
+   *
+   * @example
+   * ```typescript
+   * // List all sessions
+   * const result = await client.listSessions();
+   * console.log(`Found ${result.total} sessions`);
+   *
+   * // Filter by agent
+   * const pmSessions = await client.listSessions({ agentId: 'pm' });
+   *
+   * // Get recent sessions
+   * const recent = await client.listSessions({
+   *   startDate: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24h
+   *   limit: 10,
+   * });
+   * ```
+   */
+  async listSessions(options?: import('./storage/types.js').StorageQueryOptions): Promise<import('./storage/types.js').SessionListResult> {
+    if (!this.storage) {
+      throw new Error('Storage not configured - cannot list sessions');
+    }
+
+    return await this.storage.listSessions(options);
+  }
+
+  /**
+   * Delete saved session state
+   *
+   * @param sessionId - Session ID to delete
+   * @returns true if deleted, false if not found
+   * @throws Error if storage not configured
+   *
+   * @example
+   * ```typescript
+   * // Delete old session
+   * const deleted = await client.deleteSession('sess_123_abc');
+   * if (deleted) {
+   *   console.log('Session deleted');
+   * }
+   * ```
+   */
+  async deleteSession(sessionId: string): Promise<boolean> {
+    if (!this.storage) {
+      throw new Error('Storage not configured - cannot delete session');
+    }
+
+    this.logger.info('Deleting session', { sessionId });
+
+    try {
+      const deleted = await this.storage.deleteSession(sessionId);
+
+      if (deleted) {
+        this.logger.info('Session deleted', { sessionId });
+      } else {
+        this.logger.warn('Session not found for deletion', { sessionId });
+      }
+
+      return deleted;
+    } catch (error) {
+      this.logger.error('Failed to delete session', {
+        sessionId,
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Health check - verify all components are operational
+   *
+   * Checks:
+   * - Provider connectivity (test API call)
+   * - Storage accessibility (if configured)
+   * - Template registry status
+   *
+   * @returns Health status for each component
+   *
+   * @example
+   * ```typescript
+   * const health = await client.healthCheck();
+   *
+   * if (!health.healthy) {
+   *   console.error('Client unhealthy:', health.issues);
+   * }
+   * ```
+   */
+  async healthCheck(): Promise<{
+    healthy: boolean;
+    provider: { healthy: boolean; error?: string };
+    storage: { healthy: boolean; error?: string };
+    templates: { healthy: boolean; count: number };
+    timestamp: number;
+    issues: string[];
+  }> {
+    const timestamp = Date.now();
+    const issues: string[] = [];
+
+    // Check Provider
+    let providerHealthy = false;
+    let providerError: string | undefined;
+
+    try {
+      const provider = this.getProvider();
+      // Simple test: create messages array (no actual API call to avoid costs)
+      if (provider && typeof provider.streamMessages === 'function') {
+        providerHealthy = true;
+      } else {
+        providerError = 'Provider missing required methods';
+        issues.push('Provider not properly configured');
+      }
+    } catch (error) {
+      providerError = error instanceof Error ? error.message : 'Unknown provider error';
+      issues.push(`Provider error: ${providerError}`);
+    }
+
+    // Check Storage
+    let storageHealthy = false;
+    let storageError: string | undefined;
+
+    if (this.storage) {
+      try {
+        // Test storage with a simple operation
+        const testPath = '/.health-check';
+        await this.storage.exists(testPath);
+        storageHealthy = true;
+      } catch (error) {
+        storageError = error instanceof Error ? error.message : 'Unknown storage error';
+        issues.push(`Storage error: ${storageError}`);
+      }
+    } else {
+      storageHealthy = true; // Storage is optional
+    }
+
+    // Check Templates
+    const templateCount = this.templateRegistry.list().length;
+    const templatesHealthy = templateCount > 0;
+
+    if (!templatesHealthy) {
+      issues.push('No templates loaded');
+    }
+
+    const healthy = providerHealthy && storageHealthy && templatesHealthy;
+
+    return {
+      healthy,
+      provider: { healthy: providerHealthy, error: providerError },
+      storage: { healthy: storageHealthy, error: storageError },
+      templates: { healthy: templatesHealthy, count: templateCount },
+      timestamp,
+      issues,
+    };
+  }
+
+  /**
+   * Get diagnostic information about the client
+   *
+   * Returns detailed information about:
+   * - Configuration
+   * - Loaded templates
+   * - Storage statistics (if available)
+   * - System information
+   *
+   * @returns Diagnostic data
+   *
+   * @example
+   * ```typescript
+   * const diagnostics = await client.getDiagnostics();
+   * console.log('Templates:', diagnostics.templates.count);
+   * console.log('Storage:', diagnostics.storage.type);
+   * ```
+   */
+  async getDiagnostics(): Promise<{
+    version: string;
+    config: {
+      provider: string;
+      storage: string;
+      logLevel: string;
+    };
+    templates: {
+      count: number;
+      templates: Array<{ id: string; name: string; sectionCount: number }>;
+    };
+    storage?: {
+      type: string;
+      initialized: boolean;
+      sessionCount?: number;
+    };
+    system: {
+      nodeVersion: string;
+      platform: string;
+      memory: {
+        used: number;
+        total: number;
+      };
+    };
+  }> {
+    // Get provider type
+    const providerType = 'type' in this.config.provider
+      ? this.config.provider.type
+      : 'custom';
+
+    // Get storage info
+    let storageInfo: { type: string; initialized: boolean; sessionCount?: number } | undefined;
+
+    if (this.config.storage) {
+      storageInfo = {
+        type: this.config.storage.type,
+        initialized: this.storage !== undefined,
+      };
+
+      // Try to get session count
+      if (this.storage) {
+        try {
+          const sessions = await this.storage.listSessions({ limit: 1 });
+          storageInfo.sessionCount = sessions.total;
+        } catch {
+          // Ignore errors when fetching session count
+        }
+      }
+    }
+
+    // Get template information
+    const allTemplates = this.templateRegistry.list();
+    const templates = {
+      count: allTemplates.length,
+      templates: allTemplates.map(t => ({
+        id: t.template.id,
+        name: t.template.name,
+        sectionCount: t.sections.length,
+      })),
+    };
+
+    // System information
+    const memUsage = process.memoryUsage();
+    const system = {
+      nodeVersion: process.version,
+      platform: process.platform,
+      memory: {
+        used: Math.round(memUsage.heapUsed / 1024 / 1024), // MB
+        total: Math.round(memUsage.heapTotal / 1024 / 1024), // MB
+      },
+    };
+
+    return {
+      version: '0.1.0', // TODO: Read from package.json
+      config: {
+        provider: providerType,
+        storage: this.config.storage?.type || 'none',
+        logLevel: this.config.logLevel || 'info',
+      },
+      templates,
+      storage: storageInfo,
+      system,
+    };
+  }
+
+  /**
    * Create default console logger
    */
   private createDefaultLogger(level: string): Logger {

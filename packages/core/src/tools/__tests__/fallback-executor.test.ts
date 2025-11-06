@@ -12,7 +12,7 @@ describe('FallbackToolExecutor', () => {
     it('should return all tool definitions', () => {
       const tools = executor.getTools();
 
-      expect(tools).toHaveLength(8); // Added glob_pattern + invoke_agent + ask_user
+      expect(tools).toHaveLength(9); // Added glob_pattern + execute_command + invoke_agent + ask_user
       expect(tools.map((t) => t.name)).toEqual([
         'read_file',
         'write_file',
@@ -20,6 +20,7 @@ describe('FallbackToolExecutor', () => {
         'list_files',
         'bash_command',
         'glob_pattern',
+        'execute_command',
         'invoke_agent',
         'ask_user',
       ]);
@@ -516,6 +517,173 @@ describe('FallbackToolExecutor', () => {
         });
 
         expect(executor.getFileCount()).toBe(2);
+      });
+    });
+  });
+
+  describe('execute_command tool', () => {
+    it('should be included in tool list', () => {
+      const tools = executor.getTools();
+      const executeCmdTool = tools.find((t) => t.name === 'execute_command');
+
+      expect(executeCmdTool).toBeDefined();
+      expect(executeCmdTool!.description).toContain('whitelisted');
+      expect(executeCmdTool!.input_schema.required).toContain('command');
+    });
+
+    it('should fail when CommandExecutor not configured', async () => {
+      const result = await executor.execute({
+        id: 'tool_1',
+        name: 'execute_command',
+        input: { command: 'echo', args: ['test'] },
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('not enabled');
+      expect(result.error).toContain('setCommandExecutor');
+    });
+
+    describe('with CommandExecutor configured', () => {
+      beforeEach(() => {
+        // Enable command execution with default whitelist
+        executor.setCommandExecutor();
+      });
+
+      it('should execute whitelisted command', async () => {
+        const result = await executor.execute({
+          id: 'tool_1',
+          name: 'execute_command',
+          input: {
+            command: 'echo',
+            args: ['Hello, World!'],
+          },
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.content).toContain('Hello, World!');
+        expect(result.content).toContain('"success": true');
+        expect(result.content).toContain('"exitCode": 0');
+      });
+
+      it('should reject non-whitelisted command', async () => {
+        const result = await executor.execute({
+          id: 'tool_1',
+          name: 'execute_command',
+          input: {
+            command: 'rm',
+            args: ['-rf', '/'],
+          },
+        });
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('not in the whitelist');
+      });
+
+      it('should handle command with args', async () => {
+        const result = await executor.execute({
+          id: 'tool_1',
+          name: 'execute_command',
+          input: {
+            command: 'echo',
+            args: ['-n', 'test'],
+          },
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.content).toContain('test');
+      });
+
+      it('should handle command without args', async () => {
+        const result = await executor.execute({
+          id: 'tool_1',
+          name: 'execute_command',
+          input: {
+            command: 'pwd',
+          },
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.content).toContain('"success": true');
+      });
+
+      it('should handle command failure', async () => {
+        const result = await executor.execute({
+          id: 'tool_1',
+          name: 'execute_command',
+          input: {
+            command: 'cat',
+            args: ['/non/existent/file.txt'],
+          },
+        });
+
+        expect(result.success).toBe(false);
+        expect(result.content).toContain('"success": false');
+        expect(result.content).toContain('No such file');
+      });
+
+      it('should include metadata in result', async () => {
+        const result = await executor.execute({
+          id: 'tool_1',
+          name: 'execute_command',
+          input: {
+            command: 'echo',
+            args: ['test'],
+          },
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.metadata).toBeDefined();
+        expect(result.metadata!.command).toBe('echo');
+        expect(result.metadata!.args).toEqual(['test']);
+        expect(result.metadata!.exitCode).toBe(0);
+        expect(result.metadata!.duration).toBeGreaterThan(0);
+      });
+
+      it('should support custom working directory', async () => {
+        const result = await executor.execute({
+          id: 'tool_1',
+          name: 'execute_command',
+          input: {
+            command: 'pwd',
+            working_directory: '/tmp',
+          },
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.content).toContain('/tmp');
+      });
+
+      it('should report CommandExecutor as enabled', () => {
+        expect(executor.isCommandExecutionEnabled()).toBe(true);
+      });
+    });
+
+    describe('with custom whitelist', () => {
+      beforeEach(() => {
+        executor.setCommandExecutor({
+          whitelist: ['echo', 'cat', 'pandoc'],
+        });
+      });
+
+      it('should allow custom whitelisted command', async () => {
+        const result = await executor.execute({
+          id: 'tool_1',
+          name: 'execute_command',
+          input: { command: 'echo', args: ['allowed'] },
+        });
+
+        expect(result.success).toBe(true);
+      });
+
+      it('should reject command not in custom whitelist', async () => {
+        const result = await executor.execute({
+          id: 'tool_1',
+          name: 'execute_command',
+          input: { command: 'ls', args: ['/'] },
+        });
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('not in the whitelist');
       });
     });
   });

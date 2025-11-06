@@ -21,6 +21,7 @@ export {
   type StorageResult,
   type StorageQueryOptions,
   type StorageListResult,
+  type SessionListResult,
   StorageNotFoundError,
   StorageError,
 } from './types.js';

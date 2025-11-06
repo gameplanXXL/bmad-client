@@ -11,6 +11,7 @@ export { SystemPromptGenerator } from './prompt-generator.js';
 export { AgentLoader, AgentLoadError, AgentParseError } from './agent-loader.js';
 export { AnthropicProvider, AnthropicProviderError } from './providers/anthropic.js';
 export { FallbackToolExecutor } from './tools/fallback-executor.js';
+export { CommandExecutor, CommandNotAllowedError, CommandTimeoutError, CONTENT_CREATION_WHITELIST } from './tools/command-executor.js';
 
 export type {
   BmadClientConfig,
@@ -33,6 +34,9 @@ export type {
   LLMProvider,
   ModelInfo,
 } from './types.js';
+
+// Export command executor types
+export type { CommandConfig, CommandResult } from './tools/command-executor.js';
 
 // Export template system
 export * from './templates/index.js';
