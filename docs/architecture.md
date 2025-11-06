@@ -25,6 +25,7 @@ This document defines the architecture for **BMad Client Library**, a Node.js/Ty
 |------|---------|-------------|--------|
 | 2025-10-31 | 1.0 | Initial architecture document | Winston (Architect) |
 | 2025-11-05 | 2.0 | Removed MCP, focused on VFS-based tool execution | Winston (Architect) |
+| 2025-11-06 | 3.0 | Added Conversational Session Pattern for Claude Code-like multi-turn interactions | Winston (Architect) |
 
 ---
 
@@ -106,11 +107,18 @@ interface BmadClientConfig {
 class BmadClient {
   constructor(config: BmadClientConfig);
 
+  // One-shot execution (single command → result → done)
   async startAgent(
     agentId: string,
     command: string,
     options?: SessionOptions
   ): Promise<BmadSession>;
+
+  // Multi-turn conversation (Claude Code-like REPL)
+  async startConversation(
+    agentId: string,
+    options?: ConversationalOptions
+  ): Promise<ConversationalSession>;
 }
 ```
 
@@ -121,7 +129,7 @@ class BmadClient {
 
 ### 2. BmadSession
 
-**Manages single agent execution lifecycle.**
+**Manages single agent execution lifecycle (one-shot execution).**
 
 ```typescript
 interface SessionOptions {
@@ -156,6 +164,251 @@ class BmadSession extends EventEmitter {
    - Continue until completion or error
 5. Extract documents from VFS
 6. Return SessionResult with costs and documents
+
+**Limitation:** `BmadSession` is designed for **one-shot execution** (one command → result → done). For multi-turn conversations (Claude Code-like REPL), use `ConversationalSession` instead.
+
+### 2b. ConversationalSession
+
+**Manages multi-turn conversational interactions (Claude Code-like REPL).**
+
+```typescript
+interface ConversationalOptions {
+  costLimit?: number;
+  pauseTimeout?: number;
+  autoSave?: boolean; // Auto-save state after each turn
+}
+
+class ConversationalSession extends EventEmitter {
+  readonly id: string;
+  readonly agentId: string;
+
+  // Send user message (non-blocking)
+  async send(message: string): Promise<void>;
+
+  // Wait for current processing to complete
+  async waitForCompletion(timeoutMs?: number): Promise<ConversationTurn>;
+
+  // Check if agent is idle (ready for next input)
+  isIdle(): boolean;
+
+  // Answer questions during execution
+  async answer(input: string): Promise<void>;
+
+  // Get conversation history
+  getHistory(): ConversationTurn[];
+
+  // Get accumulated documents so far
+  getDocuments(): Document[];
+
+  // Get current costs
+  getCosts(): CostReport;
+
+  // Explicitly end conversation
+  async end(): Promise<ConversationResult>;
+
+  // Events
+  on('turn-started', () => void);
+  on('turn-completed', (turn: ConversationTurn) => void);
+  on('question', (q: Question) => void);
+  on('idle', () => void);
+  on('cost-warning', (cost: number) => void);
+  on('error', (error: Error) => void);
+}
+
+interface ConversationTurn {
+  id: string;
+  userMessage: string;
+  agentResponse: string;
+  toolCalls: ToolCall[];
+  tokensUsed: { input: number; output: number };
+  cost: number;
+  timestamp: number;
+}
+
+interface ConversationResult {
+  conversationId: string;
+  turns: ConversationTurn[];
+  documents: Document[];
+  totalCost: number;
+  totalTokens: { input: number; output: number };
+  duration: number;
+}
+```
+
+**Key Differences from BmadSession:**
+
+| Feature | BmadSession | ConversationalSession |
+|---------|-------------|----------------------|
+| **Execution Model** | One-shot (execute → complete → done) | Multi-turn (send → wait → send → ...) |
+| **Context Retention** | Lost after execute() | Persistent across send() calls |
+| **VFS Lifetime** | Destroyed after execute() | Persistent for entire conversation |
+| **User Input** | One command per session | Multiple messages per conversation |
+| **Use Case** | Single task execution | Claude Code-like REPL |
+
+**Execution Flow:**
+
+```
+1. Application calls client.startConversation('pm')
+   ↓
+2. ConversationalSession initialized:
+   - Create persistent VFS instance
+   - Load agent definition
+   - Pre-load templates into VFS
+   - Generate system prompt
+   - Status: 'idle'
+   ↓
+3. First turn: conversation.send('Create a PRD for todo app')
+   ↓
+4. Status → 'processing'
+   ↓
+5. Internal conversation loop:
+   - Add user message to messages[]
+   - Send messages[] to LLM with tools
+   - Execute tool calls via VFS (persistent)
+   - Add responses to messages[]
+   - Continue until LLM completes turn
+   ↓
+6. LLM asks question → emit 'question' event
+   ↓
+7. User answers → conversation.answer(input)
+   ↓
+8. Resume processing → add answer to messages[]
+   ↓
+9. Turn completes:
+   - Emit 'turn-completed' event
+   - Status → 'idle'
+   - VFS remains intact
+   - messages[] accumulated
+   ↓
+10. Second turn: conversation.send('Update target users section')
+    ↓
+11. Status → 'processing' again
+    ↓
+12. LLM has FULL CONTEXT:
+    - All previous messages[]
+    - All files in VFS (PRD from turn 1)
+    - Can reference earlier work
+    ↓
+13. Process turn 2 (same loop as turn 1)
+    ↓
+14. Turn completes → Status → 'idle'
+    ↓
+15. Continue until: conversation.end()
+    ↓
+16. Return ConversationResult with:
+    - All turns
+    - All documents from VFS
+    - Total costs
+```
+
+**Example Usage:**
+
+```typescript
+// Start conversation
+const conversation = await client.startConversation('pm');
+
+// First interaction
+await conversation.send('Create a PRD for a todo app');
+
+conversation.on('question', async ({ question }) => {
+  // Handle elicitation
+  await conversation.answer('Busy professionals needing task management');
+});
+
+await conversation.waitForCompletion();
+console.log('Turn 1 complete');
+
+// Second interaction - NATURAL CONTINUATION
+await conversation.send('Add mobile app feature to UI goals');
+await conversation.waitForCompletion();
+console.log('Turn 2 complete - PRD updated');
+
+// Third interaction - QUESTION
+await conversation.send('What is the estimated timeline?');
+const turn3 = await conversation.waitForCompletion();
+console.log('Agent response:', turn3.agentResponse);
+
+// Fourth interaction - AGENT SWITCH
+await conversation.send('Now create architecture document');
+await conversation.waitForCompletion();
+console.log('Architecture created');
+
+// End conversation
+const result = await conversation.end();
+console.log(`Total: ${result.turns.length} turns, ${result.documents.length} documents`);
+console.log(`Cost: $${result.totalCost.toFixed(2)}`);
+```
+
+**HTTP Integration with Long-Running Conversations:**
+
+```typescript
+// Express API - Start conversation
+app.post('/api/conversations', async (req, res) => {
+  const conversation = await client.startConversation('pm');
+  conversations.set(conversation.id, conversation);
+
+  // Send first message in background
+  conversation.send(req.body.message).catch(err =>
+    console.error('Conversation error:', err)
+  );
+
+  res.json({
+    conversationId: conversation.id,
+    status: 'processing'
+  });
+});
+
+// Send additional messages
+app.post('/api/conversations/:id/messages', async (req, res) => {
+  const conversation = conversations.get(req.params.id);
+
+  if (!conversation) {
+    return res.status(404).json({ error: 'Conversation not found' });
+  }
+
+  if (!conversation.isIdle()) {
+    return res.status(409).json({ error: 'Agent is still processing previous message' });
+  }
+
+  conversation.send(req.body.message).catch(err =>
+    console.error('Message error:', err)
+  );
+
+  res.json({ status: 'processing' });
+});
+
+// Poll conversation status
+app.get('/api/conversations/:id', async (req, res) => {
+  const conversation = conversations.get(req.params.id);
+
+  if (!conversation) {
+    return res.status(404).json({ error: 'Conversation not found' });
+  }
+
+  res.json({
+    conversationId: conversation.id,
+    isIdle: conversation.isIdle(),
+    turns: conversation.getHistory(),
+    documents: conversation.getDocuments(),
+    costs: conversation.getCosts()
+  });
+});
+
+// Answer questions
+app.post('/api/conversations/:id/answers', async (req, res) => {
+  const conversation = conversations.get(req.params.id);
+  await conversation.answer(req.body.answer);
+  res.json({ status: 'answered' });
+});
+
+// End conversation
+app.post('/api/conversations/:id/end', async (req, res) => {
+  const conversation = conversations.get(req.params.id);
+  const result = await conversation.end();
+  conversations.delete(req.params.id);
+  res.json(result);
+});
+```
 
 ### 3. Agent Loader
 
@@ -626,6 +879,13 @@ export async function POST(request: Request) {
 
 ---
 
-**Document Version:** 2.0
-**Last Updated:** 2025-11-05
+**Document Version:** 3.0
+**Last Updated:** 2025-11-06
 **Maintained By:** Winston (Architect)
+
+**Version 3.0 Changes:**
+- Added ConversationalSession for multi-turn interactions (Claude Code-like REPL)
+- Documented key differences between BmadSession (one-shot) and ConversationalSession (multi-turn)
+- Added HTTP integration patterns for long-running conversations (polling, SSE)
+- Included complete API documentation for conversational workflows
+- Added example usage patterns for production deployment

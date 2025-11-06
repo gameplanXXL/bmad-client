@@ -8,11 +8,15 @@ import type {
   AgentDefinition,
   CostReport,
   ModelCost,
+  ChildSessionCost,
+  LLMProvider,
+  Document,
 } from './types.js';
 import { SystemPromptGenerator } from './prompt-generator.js';
 import { AgentLoader } from './agent-loader.js';
 import { AnthropicProvider } from './providers/anthropic.js';
 import { FallbackToolExecutor } from './tools/fallback-executor.js';
+import { CostTracker } from './cost/tracker.js';
 
 /**
  * BmadSession - Represents a single agent execution session with tool call loop
@@ -30,14 +34,26 @@ export class BmadSession extends EventEmitter {
   // Components
   private promptGenerator: SystemPromptGenerator;
   private agentLoader: AgentLoader;
-  private provider?: AnthropicProvider;
+  private provider?: LLMProvider;
   private toolExecutor: FallbackToolExecutor;
+  private costTracker?: CostTracker;
 
   // State
   private messages: Message[] = [];
+
+  // Legacy tracking (TODO: Remove after full CostTracker integration)
   private totalInputTokens = 0;
   private totalOutputTokens = 0;
   private apiCallCount = 0;
+  private childSessionCosts: ChildSessionCost[] = [];
+
+  // Pause/Resume for user questions
+  private pendingQuestion?: {
+    question: string;
+    context?: string;
+    resolve: (answer: string) => void;
+    reject: (error: Error) => void;
+  };
 
   constructor(
     client: BmadClient,
@@ -54,8 +70,11 @@ export class BmadSession extends EventEmitter {
 
     // Initialize components
     this.promptGenerator = new SystemPromptGenerator();
-    this.agentLoader = new AgentLoader();
+    this.agentLoader = new AgentLoader(client.getLogger());
     this.toolExecutor = new FallbackToolExecutor();
+
+    // Set session reference in tool executor (for invoke_agent)
+    this.toolExecutor.setSession(this);
 
     // Initialize VFS if context has initial files
     if (this.options.context?.['initialFiles']) {
@@ -87,7 +106,10 @@ export class BmadSession extends EventEmitter {
       // 2. Initialize provider
       this.initializeProvider();
 
-      // 3. Load agents into VFS for discovery (e.g., bmad-orchestrator)
+      // 3. Initialize cost tracker
+      this.initializeCostTracker();
+
+      // 4. Load agents into VFS for discovery (e.g., bmad-orchestrator)
       await this.loadAgentsIntoVFS();
 
       // 4. Generate system prompt with tools
@@ -114,10 +136,15 @@ export class BmadSession extends EventEmitter {
         // Send message to LLM
         const response = await this.provider!.sendMessage(this.messages, tools);
 
-        // Track usage
+        // Track usage via cost tracker AND legacy tracking
         this.totalInputTokens += response.usage.inputTokens;
         this.totalOutputTokens += response.usage.outputTokens;
         this.apiCallCount++;
+
+        if (this.costTracker) {
+          const modelInfo = this.provider!.getModelInfo();
+          this.costTracker.recordUsage(response.usage, modelInfo.name);
+        }
 
         this.client.getLogger().debug('LLM response received', {
           stopReason: response.stopReason,
@@ -192,6 +219,34 @@ export class BmadSession extends EventEmitter {
       const documents = this.toolExecutor.getDocuments();
       const costs = this.buildCostReport();
 
+      // 8. Save documents to storage (if configured)
+      let storageUrls: string[] | undefined;
+      const storage = this.client.getStorage();
+      if (storage && documents.length > 0) {
+        try {
+          const results = await storage.saveBatch(documents, {
+            sessionId: this.id,
+            agentId: this.agentId,
+            command: this.command,
+            timestamp: this.startTime!,
+          });
+
+          storageUrls = results
+            .filter((r) => r.success && r.url)
+            .map((r) => r.url!);
+
+          this.client.getLogger().info('Documents saved to storage', {
+            sessionId: this.id,
+            count: storageUrls.length,
+          });
+        } catch (error) {
+          this.client.getLogger().warn('Failed to save documents to storage', {
+            sessionId: this.id,
+            error: error instanceof Error ? error.message : 'Unknown',
+          });
+        }
+      }
+
       // Extract final assistant response
       const assistantMessages = this.messages.filter((m) => m.role === 'assistant');
       const lastAssistantMessage = assistantMessages[assistantMessages.length - 1];
@@ -207,6 +262,7 @@ export class BmadSession extends EventEmitter {
         duration: Date.now() - this.startTime,
         messages: this.messages,
         finalResponse,
+        storageUrls,
       };
 
       this.status = 'completed';
@@ -240,14 +296,7 @@ export class BmadSession extends EventEmitter {
     }
   }
 
-  /**
-   * Answer a question (for pause/resume) - TODO: Implement in Phase 2
-   */
-  async answer(input: string): Promise<void> {
-    this.client.getLogger().debug('Answer received', { sessionId: this.id, input });
-    // TODO: Implement pause/resume logic
-    throw new Error('Pause/resume not yet implemented');
-  }
+  // Note: answer() method is implemented below (synchronous version)
 
   /**
    * Get current session status
@@ -257,26 +306,330 @@ export class BmadSession extends EventEmitter {
   }
 
   /**
-   * Load agent definition
+   * Get remaining budget for this session (used by child sessions)
    */
-  private async loadAgent(): Promise<AgentDefinition> {
-    // For PoC: Try to load from .bmad-core
-    const { resolve } = await import('path');
-    const agentPath = resolve(process.cwd(), `.bmad-core/agents/${this.agentId}.md`);
+  getRemainingBudget(): number | undefined {
+    if (!this.options.costLimit) return undefined;
 
-    try {
-      return await this.agentLoader.loadAgent(agentPath);
-    } catch (error) {
-      // Fallback: Try bmad-export-author for testing
-      const fallbackPath = resolve(process.cwd(), `../bmad-export-author/.bmad-core/agents/${this.agentId}.md`);
-      try {
-        return await this.agentLoader.loadAgent(fallbackPath);
-      } catch {
+    const spent = this.calculateCurrentCost();
+    return Math.max(0, this.options.costLimit - spent);
+  }
+
+  /**
+   * Add costs from a child session (called by invoke_agent tool)
+   */
+  addChildSessionCost(childCost: ChildSessionCost): void {
+    this.childSessionCosts.push(childCost);
+
+    // Add child tokens to parent totals
+    this.totalInputTokens += childCost.inputTokens;
+    this.totalOutputTokens += childCost.outputTokens;
+    this.apiCallCount += childCost.apiCalls;
+
+    this.client.getLogger().debug('Child session cost added', {
+      sessionId: this.id,
+      childAgent: childCost.agent,
+      childCost: childCost.totalCost,
+    });
+
+    // Check cost limit including child costs
+    if (this.options.costLimit) {
+      const totalCost = this.calculateCurrentCost();
+      if (totalCost >= this.options.costLimit) {
+        this.client.getLogger().warn('Cost limit exceeded (including child sessions)', {
+          totalCost,
+          limit: this.options.costLimit,
+        });
         throw new Error(
-          `Agent not found: ${this.agentId}. Tried ${agentPath} and ${fallbackPath}`
+          `Cost limit exceeded: $${totalCost.toFixed(4)} >= $${this.options.costLimit} (including child session costs)`
         );
       }
     }
+  }
+
+  /**
+   * Get BmadClient instance (needed by invoke_agent tool)
+   */
+  getClient(): BmadClient {
+    return this.client;
+  }
+
+  /**
+   * Get tool executor (needed by invoke_agent tool to access VFS)
+   */
+  getToolExecutor(): FallbackToolExecutor {
+    return this.toolExecutor;
+  }
+
+  /**
+   * Request user answer (called by ask_user tool)
+   * This pauses the session and waits for answer() to be called
+   */
+  async requestUserAnswer(question: string, context?: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      // Store the question and promise callbacks
+      this.pendingQuestion = {
+        question,
+        context,
+        resolve,
+        reject,
+      };
+
+      // Update status to paused
+      this.status = 'paused';
+
+      // Emit question event
+      this.emit('question', { question, context });
+
+      this.client.getLogger().info('Session paused for user question', {
+        sessionId: this.id,
+        question,
+      });
+    });
+  }
+
+  /**
+   * Provide answer to pending question (resumes session)
+   * This is a public method that applications use to respond to questions
+   */
+  public answer(answer: string): void {
+    if (!this.pendingQuestion) {
+      throw new Error('No pending question to answer');
+    }
+
+    if (this.status !== 'paused') {
+      throw new Error(`Cannot answer: session status is ${this.status}, expected 'paused'`);
+    }
+
+    this.client.getLogger().info('User answered question, resuming session', {
+      sessionId: this.id,
+      answer,
+    });
+
+    // Resume the session
+    this.status = 'running';
+    this.emit('resumed');
+
+    // Resolve the promise (unblocks ask_user tool)
+    const { resolve } = this.pendingQuestion;
+    this.pendingQuestion = undefined;
+    resolve(answer);
+  }
+
+  /**
+   * Load document from storage into VFS
+   *
+   * Allows loading previously saved documents into the session's VFS
+   * for continued work or reference.
+   *
+   * @param path - Document path to load
+   * @returns Loaded document
+   * @throws Error if storage not configured or document not found
+   *
+   * @example
+   * ```typescript
+   * // Load existing PRD for editing
+   * const prd = await session.loadDocument('/docs/prd.md');
+   * // Document is now available in VFS for agent to read/edit
+   * ```
+   */
+  public async loadDocument(path: string): Promise<Document> {
+    const storage = this.client.getStorage();
+
+    if (!storage) {
+      throw new Error('Storage not configured - cannot load documents');
+    }
+
+    try {
+      this.client.getLogger().debug('Loading document from storage', {
+        sessionId: this.id,
+        path,
+      });
+
+      // Load from storage
+      const document = await storage.load(path);
+
+      // Add to VFS for agent access
+      this.toolExecutor.initializeFiles({ [document.path]: document.content });
+
+      this.client.getLogger().info('Document loaded into VFS', {
+        sessionId: this.id,
+        path: document.path,
+        size: document.content.length,
+      });
+
+      return document;
+    } catch (error) {
+      this.client.getLogger().error('Failed to load document', {
+        sessionId: this.id,
+        path,
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Load multiple documents from storage into VFS
+   *
+   * @param paths - Document paths to load
+   * @returns Array of loaded documents
+   * @throws Error if storage not configured
+   *
+   * @example
+   * ```typescript
+   * // Load multiple related documents
+   * const docs = await session.loadDocuments([
+   *   '/docs/prd.md',
+   *   '/docs/architecture.md',
+   *   '/docs/story-1.md'
+   * ]);
+   * ```
+   */
+  public async loadDocuments(paths: string[]): Promise<Document[]> {
+    const storage = this.client.getStorage();
+
+    if (!storage) {
+      throw new Error('Storage not configured - cannot load documents');
+    }
+
+    this.client.getLogger().debug('Loading multiple documents from storage', {
+      sessionId: this.id,
+      count: paths.length,
+    });
+
+    const documents: Document[] = [];
+    const files: Record<string, string> = {};
+
+    for (const path of paths) {
+      try {
+        const document = await storage.load(path);
+        documents.push(document);
+        files[document.path] = document.content;
+      } catch (error) {
+        this.client.getLogger().warn('Failed to load document (continuing)', {
+          sessionId: this.id,
+          path,
+          error: error instanceof Error ? error.message : 'Unknown',
+        });
+      }
+    }
+
+    // Add all to VFS at once
+    if (Object.keys(files).length > 0) {
+      this.toolExecutor.initializeFiles(files);
+    }
+
+    this.client.getLogger().info('Documents loaded into VFS', {
+      sessionId: this.id,
+      loaded: documents.length,
+      failed: paths.length - documents.length,
+    });
+
+    return documents;
+  }
+
+  /**
+   * Load all documents from a session into VFS
+   *
+   * Useful for resuming work on a previous session or reviewing its outputs.
+   *
+   * @param sessionId - Session ID to load documents from
+   * @returns Array of loaded documents
+   * @throws Error if storage not configured
+   *
+   * @example
+   * ```typescript
+   * // Resume previous session's work
+   * const prevDocs = await session.loadSessionDocuments('sess_123_abc');
+   * // All documents from sess_123_abc now in VFS
+   * ```
+   */
+  public async loadSessionDocuments(sessionId: string): Promise<Document[]> {
+    const storage = this.client.getStorage();
+
+    if (!storage) {
+      throw new Error('Storage not configured - cannot load documents');
+    }
+
+    this.client.getLogger().debug('Loading session documents', {
+      currentSessionId: this.id,
+      targetSessionId: sessionId,
+    });
+
+    try {
+      // List all documents for that session
+      const result = await storage.list({ sessionId });
+
+      if (result.documents.length === 0) {
+        this.client.getLogger().warn('No documents found for session', {
+          sessionId,
+        });
+        return [];
+      }
+
+      // Load all documents
+      const paths = result.documents.map(d => d.path);
+      return await this.loadDocuments(paths);
+    } catch (error) {
+      this.client.getLogger().error('Failed to load session documents', {
+        sessionId,
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Load agent definition
+   */
+  private async loadAgent(): Promise<AgentDefinition> {
+    const { resolve } = await import('path');
+    const { glob } = await import('glob');
+    const triedPaths: string[] = [];
+
+    // Try local .bmad-core first
+    const agentPath = resolve(process.cwd(), `.bmad-core/agents/${this.agentId}.md`);
+    triedPaths.push(agentPath);
+
+    try {
+      return await this.agentLoader.loadAgent(agentPath);
+    } catch {
+      // Continue to fallbacks
+    }
+
+    // Fallback: Try bmad-export-author for testing
+    const fallbackPath = resolve(process.cwd(), `../bmad-export-author/.bmad-core/agents/${this.agentId}.md`);
+    triedPaths.push(fallbackPath);
+
+    try {
+      return await this.agentLoader.loadAgent(fallbackPath);
+    } catch {
+      // Continue to expansion packs
+    }
+
+    // Try expansion packs
+    const config = this.client.getConfig();
+    const expansionPackPaths = config.expansionPackPaths || [resolve(process.cwd(), '../')];
+
+    for (const searchPath of expansionPackPaths) {
+      try {
+        // Look for .bmad-*/agents/{agentId}.md
+        const pattern = resolve(searchPath, `.bmad-*/agents/${this.agentId}.md`);
+        const files = await glob(pattern, { windowsPathsNoEscape: true });
+
+        if (files.length > 0) {
+          triedPaths.push(pattern);
+          return await this.agentLoader.loadAgent(files[0] as string);
+        }
+      } catch {
+        // Continue to next search path
+      }
+    }
+
+    throw new Error(
+      `Agent not found: ${this.agentId}. Tried ${triedPaths.join(', ')}`
+    );
   }
 
   /**
@@ -285,6 +638,13 @@ export class BmadSession extends EventEmitter {
   private initializeProvider(): void {
     const config = this.client.getConfig();
 
+    // Support direct provider instances (for testing)
+    if ('sendMessage' in config.provider) {
+      this.provider = config.provider;
+      return;
+    }
+
+    // Support provider config objects
     if (config.provider.type === 'anthropic') {
       this.provider = new AnthropicProvider(
         config.provider.apiKey,
@@ -361,15 +721,11 @@ Result: ${result.result}`;
   }
 
   /**
-   * Calculate current cost
+   * Calculate current cost (delegates to cost tracker)
    */
   private calculateCurrentCost(): number {
-    if (!this.provider) return 0;
-
-    return this.provider.calculateCost({
-      inputTokens: this.totalInputTokens,
-      outputTokens: this.totalOutputTokens,
-    });
+    if (!this.costTracker) return 0;
+    return this.costTracker.getTotalCost();
   }
 
   /**
@@ -407,7 +763,16 @@ Result: ${result.result}`;
       outputTokens: this.totalOutputTokens,
       apiCalls: this.apiCallCount,
       breakdown,
+      childSessions: this.childSessionCosts.length > 0 ? this.childSessionCosts : undefined,
     };
+  }
+
+  /**
+   * Initialize VFS with agent files (public wrapper for loadAgentsIntoVFS)
+   * Call this before using glob_pattern or read_file tools for agent discovery
+   */
+  async initializeVFS(): Promise<void> {
+    await this.loadAgentsIntoVFS();
   }
 
   /**
@@ -460,7 +825,7 @@ Result: ${result.result}`;
   }
 
   /**
-   * Find all agent files from .bmad-core directories
+   * Find all agent files from .bmad-core directories and expansion packs
    */
   private async findAgentFiles(): Promise<string[]> {
     const { resolve } = await import('path');
@@ -468,16 +833,7 @@ Result: ${result.result}`;
 
     const agentPaths: string[] = [];
 
-    // Try local .bmad-core/agents/
-    try {
-      const localPattern = resolve(process.cwd(), '.bmad-core/agents/*.md');
-      const localFiles = await glob(localPattern, { windowsPathsNoEscape: true });
-      agentPaths.push(...localFiles);
-    } catch (error) {
-      this.client.getLogger().debug('No local .bmad-core/agents found');
-    }
-
-    // Try bmad-export-author fallback (for development)
+    // Try bmad-export-author fallback FIRST (for development)
     try {
       const fallbackPattern = resolve(
         process.cwd(),
@@ -489,7 +845,56 @@ Result: ${result.result}`;
       this.client.getLogger().debug('No bmad-export-author agents found');
     }
 
+    // Load expansion pack agents
+    await this.loadExpansionPackAgents(agentPaths);
+
+    // Try local .bmad-core/agents/ LAST (overwrites fallback/expansion files with same name)
+    try {
+      const localPattern = resolve(process.cwd(), '.bmad-core/agents/*.md');
+      const localFiles = await glob(localPattern, { windowsPathsNoEscape: true });
+      agentPaths.push(...localFiles);
+    } catch (error) {
+      this.client.getLogger().debug('No local .bmad-core/agents found');
+    }
+
     return agentPaths;
+  }
+
+  /**
+   * Load agents from expansion packs
+   */
+  private async loadExpansionPackAgents(agentPaths: string[]): Promise<void> {
+    const config = this.client.getConfig();
+    const expansionPackPaths = config.expansionPackPaths || [];
+
+    // Default: scan parent directory if no paths specified
+    if (expansionPackPaths.length === 0) {
+      const { resolve } = await import('path');
+      expansionPackPaths.push(resolve(process.cwd(), '../'));
+    }
+
+    try {
+      const expansionPacks = await this.agentLoader.loadExpansionPacks(expansionPackPaths);
+
+      for (const pack of expansionPacks) {
+        this.client.getLogger().info(`Found expansion pack: ${pack.name} with ${pack.agentCount} agents`, {
+          path: pack.path,
+        });
+
+        // Add expansion pack agent files to VFS loading list
+        // We need the file paths, so we'll construct them
+        const { resolve } = await import('path');
+        const { glob } = await import('glob');
+
+        const packAgentsPattern = resolve(pack.path, 'agents/*.md');
+        const packAgentFiles = await glob(packAgentsPattern, { windowsPathsNoEscape: true });
+        agentPaths.push(...packAgentFiles);
+      }
+    } catch (error) {
+      this.client.getLogger().warn('Failed to load expansion packs', {
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
+    }
   }
 
   /**
@@ -497,5 +902,40 @@ Result: ${result.result}`;
    */
   private generateSessionId(): string {
     return `sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  }
+
+  /**
+   * Initialize cost tracker once provider is ready
+   */
+  private initializeCostTracker(): void {
+    if (!this.provider) {
+      throw new Error('Provider must be initialized before cost tracker');
+    }
+
+    this.costTracker = new CostTracker(this.provider, {
+      costLimit: this.options.costLimit,
+      warningThresholds: [0.5, 0.75, 0.9],
+      currency: 'USD',
+      logger: this.client.getLogger(),
+    });
+
+    // Forward cost events to session events
+    this.costTracker.on('cost-warning', (data) => {
+      this.emit('cost-warning', data.currentCost);
+      this.client.getLogger().warn('Cost warning', {
+        sessionId: this.id,
+        currentCost: data.currentCost.toFixed(4),
+        limit: data.limit.toFixed(2),
+        percentage: `${(data.percentage * 100).toFixed(0)}%`,
+      });
+    });
+
+    this.costTracker.on('cost-limit-exceeded', (data) => {
+      this.client.getLogger().error('Cost limit exceeded', {
+        sessionId: this.id,
+        currentCost: data.currentCost.toFixed(4),
+        limit: data.limit.toFixed(2),
+      });
+    });
   }
 }

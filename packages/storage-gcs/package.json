@@ -1,0 +1,47 @@
+{
+  "name": "@bmad/storage-gcs",
+  "version": "0.1.0",
+  "description": "Google Cloud Storage adapter for BMad Client Library",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage"
+  },
+  "keywords": [
+    "bmad",
+    "storage",
+    "google-cloud-storage",
+    "gcs"
+  ],
+  "author": "BMad Team",
+  "license": "MIT",
+  "dependencies": {
+    "@google-cloud/storage": "^7.7.0"
+  },
+  "peerDependencies": {
+    "@bmad/client": "^0.1.0"
+  },
+  "devDependencies": {
+    "@bmad/client": "*",
+    "@types/node": "^20.10.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3",
+    "vitest": "^1.6.1"
+  }
+}

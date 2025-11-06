@@ -596,24 +596,24 @@ so that **sessions can execute agents with their defined personas and commands**
 8. Loader supports fallback paths (local `.bmad-core/` and `../bmad-export-author/`)
 9. All core agents (pm, po, architect, dev, qa, sm, analyst, ux-expert, bmad-orchestrator) load successfully
 
-### Story 3.4: Expansion Pack Agent Loading from NPM Packages
+### Story 3.4: Expansion Pack Agent Loading from Installed Directories
 
 As a **backend developer**,
-I want **to load agents from external NPM packages (expansion packs)**,
-so that **I can extend BMad with community-contributed agents for specialized domains**.
+I want **to load agents from installed expansion pack directories (`.bmad-XXX/`)**,
+so that **I can extend BMad with expansion pack agents for specialized domains**.
 
 #### Acceptance Criteria
 
-1. `BmadClient` config accepts optional `expansionPacks: string[]` array of NPM package names
-2. Loader resolves each expansion pack module using Node.js `require.resolve()`
-3. Loader scans expansion pack's `.bmad-core/agents/` directory for agent definitions
-4. Expansion pack agents are registered with namespace prefix (e.g., `gamedev:designer`)
-5. Loading errors for expansion packs are logged and don't prevent core agent loading
-6. Unit tests mock NPM package structure and verify expansion pack loading
-7. Example expansion pack `packages/examples/example-expansion/` demonstrates structure
-8. Documentation explains how to create and publish expansion packs
-9. Loader supports both ESM and CommonJS expansion pack formats
-10. Client method `client.loadExpansionPack(packageName)` allows dynamic loading after initialization
+1. `BmadClient` config accepts optional `expansionPackPaths: string[]` array of directory paths to scan for expansion packs
+2. Loader scans specified directories for `.bmad-*/` subdirectories (e.g., `.bmad-expert-author/`, `.bmad-competency-assessor/`)
+3. Loader scans each expansion pack's `agents/` directory for agent definitions
+4. Expansion pack agents are loaded alongside core agents and accessible by their agent ID
+5. Loading errors for expansion packs are logged as warnings and don't prevent core agent loading
+6. Unit tests verify expansion pack loading from filesystem directories
+7. Example demonstrates loading agents from `../bmad-export-author/.bmad-expert-author/`
+8. Default configuration scans parent directory (`../`) for expansion packs if no paths specified
+9. Loader logs discovered expansion packs at info level (e.g., "Found expansion pack: expert-author with 17 agents")
+10. VFS includes expansion pack agents in `/.bmad-core/agents/` for orchestrator discovery
 
 ### Story 3.5: Agent Metadata Inspection via Tools
 

@@ -31,17 +31,17 @@ export class SystemPromptGenerator {
       '## Agent Persona',
       '',
       this.formatAgentPersona(agent),
-      '',
-      '## Available Commands',
-      '',
-      this.formatCommands(agent.commands),
-      '',
-      '## Activation Instructions',
-      '',
-      this.formatActivationInstructions(agent),
-      '',
-      'Now, adopt this persona and await user commands.',
     ];
+
+    // Only include sections if they exist
+    if (agent.commands && agent.commands.length > 0) {
+      sections.push('', '## Available Commands', '', this.formatCommands(agent.commands));
+    }
+
+    // Always include activation instructions (with fallback)
+    sections.push('', '## Activation Instructions', '', this.formatActivationInstructions(agent));
+
+    sections.push('', 'Now, adopt this persona and await user commands.');
 
     return sections.join('\n');
   }
@@ -181,22 +181,39 @@ ${this.getToolExample(tool.name)}
 
     // Basic info
     sections.push(`**Name:** ${agent.agent.name}`);
-    sections.push(`**Role:** ${agent.persona.role}`);
-    sections.push(`**Title:** ${agent.agent.title}`);
-    sections.push(`**Icon:** ${agent.agent.icon}`);
+    if (agent.persona?.role) {
+      sections.push(`**Role:** ${agent.persona.role}`);
+    }
+    if (agent.agent.title) {
+      sections.push(`**Title:** ${agent.agent.title}`);
+    }
+    if (agent.agent.icon) {
+      sections.push(`**Icon:** ${agent.agent.icon}`);
+    }
     sections.push('');
 
-    // Persona details
-    sections.push(`**Style:** ${agent.persona.style}`);
-    sections.push(`**Identity:** ${agent.persona.identity}`);
-    sections.push(`**Focus:** ${agent.persona.focus}`);
-    sections.push('');
+    // Persona details (if available)
+    if (agent.persona) {
+      if (agent.persona.style) {
+        sections.push(`**Style:** ${agent.persona.style}`);
+      }
+      if (agent.persona.identity) {
+        sections.push(`**Identity:** ${agent.persona.identity}`);
+      }
+      if (agent.persona.focus) {
+        sections.push(`**Focus:** ${agent.persona.focus}`);
+      }
+      sections.push('');
 
-    // Core principles
-    sections.push('**Core Principles:**');
-    agent.persona.core_principles.forEach((principle) => {
-      sections.push(`- ${principle}`);
-    });
+      // Core principles
+      if (agent.persona.core_principles && agent.persona.core_principles.length > 0) {
+        sections.push('**Core Principles:**');
+        agent.persona.core_principles.forEach((principle) => {
+          sections.push(`- ${principle}`);
+        });
+        sections.push('');
+      }
+    }
 
     return sections.join('\n');
   }

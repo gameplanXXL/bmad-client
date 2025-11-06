@@ -113,6 +113,8 @@ export interface SessionOptions {
   costLimit?: number;
   pauseTimeout?: number;
   context?: Record<string, unknown>;
+  parentSessionId?: string; // Set when this is a child session
+  isSubAgent?: boolean; // True if this session is invoked by another agent
 }
 
 export interface SessionResult {
@@ -123,6 +125,7 @@ export interface SessionResult {
   error?: Error;
   messages?: Message[]; // Full conversation history
   finalResponse?: string; // Last assistant message (for convenience)
+  storageUrls?: string[]; // URLs to stored documents (if storage configured)
 }
 
 export interface Document {
@@ -137,6 +140,17 @@ export interface CostReport {
   outputTokens: number;
   apiCalls: number;
   breakdown: ModelCost[];
+  childSessions?: ChildSessionCost[]; // Costs from invoked sub-agents
+}
+
+export interface ChildSessionCost {
+  sessionId: string;
+  agent: string;
+  command: string;
+  totalCost: number;
+  inputTokens: number;
+  outputTokens: number;
+  apiCalls: number;
 }
 
 export interface ModelCost {
@@ -155,13 +169,60 @@ export interface Question {
 export type SessionStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'timeout';
 
 // ============================================================================
+// Conversational Session Types
+// ============================================================================
+
+export interface ConversationalOptions {
+  costLimit?: number;
+  pauseTimeout?: number;
+  autoSave?: boolean; // Auto-save state after each turn
+  context?: Record<string, unknown>;
+}
+
+export interface ConversationTurn {
+  id: string;
+  userMessage: string;
+  agentResponse: string;
+  toolCalls: ToolCall[];
+  tokensUsed: { input: number; output: number };
+  cost: number;
+  timestamp: number;
+}
+
+export interface ConversationResult {
+  conversationId: string;
+  turns: ConversationTurn[];
+  documents: Document[];
+  totalCost: number;
+  totalTokens: { input: number; output: number };
+  duration: number;
+}
+
+export type ConversationalStatus = 'idle' | 'processing' | 'waiting_for_answer' | 'ended' | 'error';
+
+// ============================================================================
 // Client Configuration
 // ============================================================================
 
 export interface BmadClientConfig {
-  provider: ProviderConfig;
+  provider: ProviderConfig | LLMProvider;
+  storage?: StorageConfig; // Optional storage configuration
   logLevel?: 'error' | 'warn' | 'info' | 'debug';
   logger?: Logger;
+  expansionPackPaths?: string[]; // Paths to scan for .bmad-*/ directories
+}
+
+export interface StorageConfig {
+  type: 'memory' | 'gcs' | 'custom';
+
+  // GCS-specific config
+  projectId?: string;
+  bucketName?: string;
+  keyFilename?: string;
+  credentials?: Record<string, unknown>;
+
+  // Custom adapter
+  adapter?: any; // StorageAdapter (avoiding circular dependency)
 }
 
 export interface ProviderConfig {

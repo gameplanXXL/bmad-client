@@ -1,13 +1,26 @@
-import { readFile, readdir } from 'fs/promises';
+import { readFile, readdir, stat } from 'fs/promises';
 import { join, extname } from 'path';
 import matter from 'gray-matter';
 import { AgentDefinitionSchema } from './agent-schema.js';
-import type { AgentDefinition } from './types.js';
+import type { AgentDefinition, Logger } from './types.js';
+
+export interface ExpansionPackInfo {
+  name: string;
+  path: string;
+  agentCount: number;
+  agents: AgentDefinition[];
+}
 
 /**
  * AgentLoader - Loads and parses agent definitions from markdown files
  */
 export class AgentLoader {
+  private logger?: Logger;
+
+  constructor(logger?: Logger) {
+    this.logger = logger;
+  }
+
   /**
    * Load a single agent from a markdown file
    */
@@ -42,6 +55,84 @@ export class AgentLoader {
       }
       throw error;
     }
+  }
+
+  /**
+   * Scan directories for expansion packs and load their agents.
+   * Looks for .bmad-* subdirectories in the provided search paths.
+   */
+  async loadExpansionPacks(searchPaths: string[]): Promise<ExpansionPackInfo[]> {
+    const expansionPacks: ExpansionPackInfo[] = [];
+
+    for (const searchPath of searchPaths) {
+      try {
+        const packs = await this.discoverExpansionPacks(searchPath);
+        expansionPacks.push(...packs);
+      } catch (error) {
+        // Log warning but don't fail if a search path is invalid
+        if (error instanceof Error) {
+          this.logger?.warn(`Failed to scan expansion packs in ${searchPath}: ${error.message}`);
+        }
+      }
+    }
+
+    return expansionPacks;
+  }
+
+  /**
+   * Discover expansion packs in a directory (looks for .bmad-* subdirectories)
+   */
+  private async discoverExpansionPacks(basePath: string): Promise<ExpansionPackInfo[]> {
+    const packs: ExpansionPackInfo[] = [];
+
+    try {
+      const entries = await readdir(basePath);
+
+      // Find all .bmad-* directories
+      const bmadDirs = entries.filter((entry) => entry.startsWith('.bmad-'));
+
+      for (const bmadDir of bmadDirs) {
+        const packPath = join(basePath, bmadDir);
+        const agentsPath = join(packPath, 'agents');
+
+        try {
+          // Check if agents directory exists
+          const agentsDirStat = await stat(agentsPath);
+          if (!agentsDirStat.isDirectory()) {
+            continue;
+          }
+
+          // Load agents from this expansion pack
+          const agents = await this.loadFromDirectory(agentsPath);
+
+          // Extract pack name from directory (e.g., .bmad-expert-author -> expert-author)
+          const packName = bmadDir.replace('.bmad-', '');
+
+          packs.push({
+            name: packName,
+            path: packPath,
+            agentCount: agents.length,
+            agents,
+          });
+
+          this.logger?.info(`Found expansion pack: ${packName} with ${agents.length} agents`, {
+            path: packPath,
+          });
+        } catch (error) {
+          // Log warning for individual pack but continue with others
+          if (error instanceof Error) {
+            this.logger?.warn(`Failed to load expansion pack ${bmadDir}: ${error.message}`);
+          }
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new AgentLoadError(`Failed to discover expansion packs in ${basePath}: ${error.message}`);
+      }
+      throw error;
+    }
+
+    return packs;
   }
 
   /**

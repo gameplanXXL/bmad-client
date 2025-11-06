@@ -32,6 +32,14 @@ interface ToolResult {
  */
 export class FallbackToolExecutor {
   private vfs: Map<string, VirtualFile> = new Map();
+  private session?: any; // Session reference (set after construction to avoid circular dependency)
+
+  /**
+   * Set session reference (needed for invoke_agent)
+   */
+  setSession(session: any): void {
+    this.session = session;
+  }
 
   /**
    * Get tool definitions for this executor
@@ -147,6 +155,62 @@ export class FallbackToolExecutor {
           required: ['pattern'],
         },
       },
+      {
+        name: 'invoke_agent',
+        description: `Invoke a specialized BMad agent to handle a specific task. Use this for delegating work to expert agents like PM, Architect, Dev, QA, etc.
+
+When to use:
+- User needs PRD creation → invoke pm agent
+- User needs system architecture → invoke architect agent
+- User needs code implementation → invoke dev agent
+- User needs test strategy → invoke qa agent
+
+The sub-agent will execute autonomously in its own session and return results including generated documents and costs.`,
+        input_schema: {
+          type: 'object',
+          properties: {
+            agent_id: {
+              type: 'string',
+              description: 'ID of the agent to invoke',
+              enum: ['pm', 'po', 'architect', 'dev', 'qa', 'sm', 'analyst', 'ux-expert'],
+            },
+            command: {
+              type: 'string',
+              description: 'Command for the agent to execute (e.g., "create-prd", "*create-architecture")',
+            },
+            context: {
+              type: 'object',
+              description: 'Context to pass to the sub-agent (project details, requirements, etc.)',
+            },
+          },
+          required: ['agent_id', 'command'],
+        },
+      },
+      {
+        name: 'ask_user',
+        description: `Ask the user a question and wait for their answer. Use this when you need information from the user to continue.
+
+The session will pause until the user provides an answer. The answer will be returned as the tool result.
+
+Examples:
+- "What should be the primary color scheme?"
+- "Which database technology do you prefer: PostgreSQL, MySQL, or MongoDB?"
+- "What is the target audience for this feature?"`,
+        input_schema: {
+          type: 'object',
+          properties: {
+            question: {
+              type: 'string',
+              description: 'The question to ask the user',
+            },
+            context: {
+              type: 'string',
+              description: 'Optional context to help the user understand what you need',
+            },
+          },
+          required: ['question'],
+        },
+      },
     ];
   }
 
@@ -187,6 +251,19 @@ export class FallbackToolExecutor {
             toolCall.input['path'] as string | undefined
           );
 
+        case 'ask_user':
+          return await this.askUser(
+            toolCall.input['question'] as string,
+            toolCall.input['context'] as string | undefined
+          );
+
+        case 'invoke_agent':
+          return await this.invokeAgent(
+            toolCall.input['agent_id'] as string,
+            toolCall.input['command'] as string,
+            toolCall.input['context'] as Record<string, unknown> | undefined
+          );
+
         default:
           return {
             success: false,
@@ -199,6 +276,13 @@ export class FallbackToolExecutor {
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
+  }
+
+  /**
+   * Alias for execute() - for convenience in tests and applications
+   */
+  async executeTool(toolCall: ToolCall): Promise<ToolResult> {
+    return this.execute(toolCall);
   }
 
   /**
@@ -510,6 +594,7 @@ export class FallbackToolExecutor {
 
   /**
    * Get all documents from VFS (for session result)
+   * Excludes agent definitions that were loaded for discovery
    */
   getDocuments(): Array<{ path: string; content: string }> {
     const documents: Array<{ path: string; content: string }> = [];
@@ -517,6 +602,11 @@ export class FallbackToolExecutor {
     for (const [path, file] of this.vfs) {
       // Skip directory markers
       if (path.endsWith('/.directory')) continue;
+
+      // Skip agent definitions (they're loaded for discovery, not output)
+      if (path.includes('/.bmad-core/agents/') || path.includes('/.bmad-') && path.endsWith('/agents/')) {
+        continue;
+      }
 
       documents.push({
         path,
@@ -567,5 +657,162 @@ export class FallbackToolExecutor {
    */
   getFileCount(): number {
     return this.vfs.size;
+  }
+
+  /**
+   * Read file content directly from VFS (synchronous)
+   * Used by tests and for direct VFS access
+   */
+  getFileContent(filePath: string): string {
+    const file = this.vfs.get(filePath);
+    if (!file) {
+      return '';
+    }
+    return file.content;
+  }
+
+  /**
+   * Check if file exists in VFS
+   */
+  hasFile(filePath: string): boolean {
+    return this.vfs.has(filePath);
+  }
+
+  /**
+   * Invoke a sub-agent to handle a task
+   */
+  private async invokeAgent(
+    agentId: string,
+    command: string,
+    context?: Record<string, unknown>
+  ): Promise<ToolResult> {
+    if (!this.session) {
+      return {
+        success: false,
+        error: 'invoke_agent: Session reference not set',
+      };
+    }
+
+    try {
+      const parentSession = this.session;
+      const client = parentSession.getClient();
+      const logger = client.getLogger();
+
+      logger.info('Invoking sub-agent', {
+        parentSessionId: parentSession.id,
+        agentId,
+        command,
+      });
+
+      // Create child session with context
+      const childSession = await client.startAgent(agentId, command, {
+        costLimit: parentSession.getRemainingBudget(),
+        context: {
+          ...context,
+          parentSessionId: parentSession.id,
+          isSubAgent: true,
+        },
+      });
+
+      // Execute child session
+      const result = await childSession.execute();
+
+      if (result.status !== 'completed') {
+        return {
+          success: false,
+          error: `Sub-agent failed: ${result.error?.message || 'Unknown error'}`,
+        };
+      }
+
+      // Add child costs to parent
+      const childCost: any = {
+        sessionId: childSession.id,
+        agent: agentId,
+        command,
+        totalCost: result.costs.totalCost,
+        inputTokens: result.costs.inputTokens,
+        outputTokens: result.costs.outputTokens,
+        apiCalls: result.costs.apiCalls,
+      };
+
+      parentSession.addChildSessionCost(childCost);
+
+      // Merge child documents into parent VFS
+      const parentToolExecutor = parentSession.getToolExecutor();
+      for (const doc of result.documents) {
+        const now = Date.now();
+        parentToolExecutor.vfs.set(doc.path, {
+          content: doc.content,
+          metadata: {
+            createdAt: now,
+            modifiedAt: now,
+            size: doc.content.length,
+          },
+        });
+      }
+
+      logger.info('Sub-agent completed', {
+        parentSessionId: parentSession.id,
+        agentId,
+        documentCount: result.documents.length,
+        cost: result.costs.totalCost,
+      });
+
+      // Return structured result to LLM
+      const responseData = {
+        status: 'completed',
+        agent: agentId,
+        command,
+        documents: result.documents.map((d: any) => ({
+          path: d.path,
+          size: d.content.length,
+        })),
+        costs: {
+          totalCost: result.costs.totalCost,
+          inputTokens: result.costs.inputTokens,
+          outputTokens: result.costs.outputTokens,
+          apiCalls: result.costs.apiCalls,
+        },
+        duration: result.duration,
+      };
+
+      return {
+        success: true,
+        content: JSON.stringify(responseData, null, 2),
+        metadata: responseData,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `invoke_agent failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+
+  /**
+   * Ask the user a question (pauses session until answer provided)
+   */
+  private async askUser(question: string, context?: string): Promise<ToolResult> {
+    if (!this.session) {
+      return {
+        success: false,
+        error: 'ask_user: Session reference not set',
+      };
+    }
+
+    try {
+      // Request answer from session (this will pause execution)
+      const answer = await this.session.requestUserAnswer(question, context);
+
+      return {
+        success: true,
+        content: answer,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `ask_user failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
   }
 }
