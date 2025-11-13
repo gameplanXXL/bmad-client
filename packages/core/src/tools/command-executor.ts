@@ -13,7 +13,6 @@
  */
 
 import { spawn } from 'child_process';
-import { resolve, dirname } from 'path';
 import { access, mkdir } from 'fs/promises';
 import { constants } from 'fs';
 

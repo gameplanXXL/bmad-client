@@ -221,8 +221,20 @@ ${this.getToolExample(tool.name)}
   /**
    * Format available commands
    */
-  private formatCommands(commands: string[]): string {
-    return commands.map((cmd) => `- ${cmd}`).join('\n');
+  private formatCommands(commands: string[] | Record<string, string>[] | (string | Record<string, string>)[]): string {
+    return commands.map((cmd) => {
+      if (typeof cmd === 'string') {
+        return `- ${cmd}`;
+      } else {
+        // Handle object format: { command: "description" }
+        const entries = Object.entries(cmd);
+        if (entries.length > 0) {
+          const entry = entries[0]!;
+          return `- ${entry[0]}: ${entry[1]}`;
+        }
+        return '- (unknown command)';
+      }
+    }).join('\n');
   }
 
   /**

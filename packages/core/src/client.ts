@@ -355,13 +355,12 @@ export class BmadClient extends EventEmitter {
     let providerError: string | undefined;
 
     try {
-      const provider = this.getProvider();
-      // Simple test: create messages array (no actual API call to avoid costs)
-      if (provider && typeof provider.streamMessages === 'function') {
+      // Simple test: check if provider config exists
+      if (this.config.provider) {
         providerHealthy = true;
       } else {
-        providerError = 'Provider missing required methods';
-        issues.push('Provider not properly configured');
+        providerError = 'Provider not configured';
+        issues.push('Provider configuration missing');
       }
     } catch (error) {
       providerError = error instanceof Error ? error.message : 'Unknown provider error';

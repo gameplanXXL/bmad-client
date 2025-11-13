@@ -10,7 +10,7 @@
     "dev": "tsx watch src/index.ts"
   },
   "dependencies": {
-    "@bmad/client": "workspace:*",
+    "@bmad/client": "file:../../core",
     "dotenv": "^16.4.5"
   },
   "devDependencies": {
