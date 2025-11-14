@@ -148,10 +148,11 @@ export class TaskExecutor {
     let match;
 
     while ((match = headerRegex.exec(task.content)) !== null) {
-      const header = match[1].trim();
+      const header = match[1]?.trim();
 
       // Filter out metadata headers
       if (
+        header &&
         !header.startsWith('⚠️') &&
         !header.includes('CRITICAL') &&
         !header.includes('Task Instructions')
@@ -163,7 +164,9 @@ export class TaskExecutor {
     // Extract numbered steps
     const stepRegex = /^\d+\.\s+\*\*(.+?)\*\*/gm;
     while ((match = stepRegex.exec(task.content)) !== null) {
-      actions.push(match[1].trim());
+      if (match[1]) {
+        actions.push(match[1].trim());
+      }
     }
 
     return actions;
@@ -247,13 +250,14 @@ export interface TaskSummary {
  * Task execution error
  */
 export class TaskExecutionError extends Error {
-  constructor(
-    message: string,
-    public taskId?: string,
-    public cause?: unknown
-  ) {
+  public taskId?: string;
+  public override cause?: unknown;
+
+  constructor(message: string, taskId?: string, cause?: unknown) {
     super(message);
     this.name = 'TaskExecutionError';
+    this.taskId = taskId;
+    this.cause = cause;
   }
 }
 

@@ -10,7 +10,7 @@ export const AgentDefinitionSchema = z.object({
     title: z.string().optional(),
     icon: z.string().optional(),
     whenToUse: z.string().optional(),
-    customization: z.string().optional(),
+    customization: z.string().nullable().optional(),
     role: z.string().optional(),
     description: z.string().optional(),
     version: z.string().optional(),
@@ -22,16 +22,17 @@ export const AgentDefinitionSchema = z.object({
     style: z.string(),
     identity: z.string(),
     focus: z.string(),
-    core_principles: z.array(z.string()),
+    core_principles: z.array(z.string()).optional(),
   }).optional(),
   // Commands can be either:
   // 1. String array (Core agents): ['*help', '*plan']
   // 2. Object array (Expansion Pack agents): [{ help: 'Show commands' }]
-  // 3. Mixed array (some strings, some objects)
+  // 3. Mixed array (some strings, some objects with nested structures)
+  // Allow any structure within command objects to support complex command definitions
   commands: z.union([
     z.array(z.string()),
-    z.array(z.record(z.string(), z.string())),
-    z.array(z.union([z.string(), z.record(z.string(), z.string())])),
+    z.array(z.record(z.string(), z.any())),
+    z.array(z.union([z.string(), z.record(z.string(), z.any())])),
   ]).optional(),
   tools: z.array(z.string()).optional(),
   dependencies: z.object({

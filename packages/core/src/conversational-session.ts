@@ -155,6 +155,7 @@ export class ConversationalSession extends EventEmitter {
 
   private async loadAgent(): Promise<AgentDefinition> {
     const { resolve, join } = await import('path');
+    const { readdir } = await import('fs/promises');
     const expansionPaths = this.client.getConfig().expansionPackPaths || [];
     const fallbackPaths = [
       './.bmad-core/agents',
@@ -163,12 +164,46 @@ export class ConversationalSession extends EventEmitter {
       '../bmad-export-author/.bmad-competency-assessor/agents',
     ];
 
-    for (const basePath of [...expansionPaths, ...fallbackPaths]) {
+    const searchPaths: string[] = [];
+
+    // 1. Scan expansion pack paths for .bmad-* directories (like templates/tasks)
+    for (const basePath of expansionPaths) {
+      try {
+        this.client.getLogger().debug(`Scanning expansion pack for agents: ${basePath}`);
+        const entries = await readdir(basePath);
+
+        // Find all .bmad-* directories
+        const bmadDirs = entries.filter((entry) => entry.startsWith('.bmad-'));
+
+        for (const bmadDir of bmadDirs) {
+          const agentsPath = join(basePath, bmadDir, 'agents');
+          searchPaths.push(agentsPath);
+          this.client.getLogger().debug(`Found expansion pack agents directory: ${agentsPath}`);
+        }
+      } catch (error) {
+        this.client.getLogger().debug(`Failed to scan expansion pack: ${basePath}`, {
+          error: error instanceof Error ? error.message : 'Unknown',
+        });
+      }
+    }
+
+    // 2. Add fallback paths
+    searchPaths.push(...fallbackPaths);
+
+    // 3. Try to load agent from all discovered paths
+    for (const basePath of searchPaths) {
       const agentPath = resolve(join(basePath, `${this.agentId}.md`));
+      this.client.getLogger().debug(`Trying agent path: ${agentPath}`);
+
       try {
         const agent = await this.agentLoader.loadAgent(agentPath);
+        this.client.getLogger().info(`Agent loaded successfully: ${this.agentId} from ${agentPath}`);
         return agent;
       } catch (error) {
+        // Log the specific error for debugging
+        this.client.getLogger().debug(`Failed to load from ${agentPath}`, {
+          error: error instanceof Error ? error.message : 'Unknown',
+        });
         // Try next path
         continue;
       }
