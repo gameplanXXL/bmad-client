@@ -37,9 +37,6 @@ vi.mock('../agent-loader.js', () => ({
 describe('Pause/Resume Tests', () => {
   let client: BmadClient;
   let mockProvider: MockLLMProvider;
-  // For skipped tests that use old API
-  const mockAnthropicResponses: any[] = [];
-  const createMockResponse = (params: any) => params;
 
   beforeEach(() => {
     mockProvider = new MockLLMProvider({
@@ -55,29 +52,39 @@ describe('Pause/Resume Tests', () => {
     });
   });
 
-  it.skip('should pause session when ask_user is called', async () => {
-    // Agent calls ask_user
-    mockAnthropicResponses.push(
-      createMockResponse({
-        toolUse: {
-          name: 'ask_user',
-          input: { question: 'What is your favorite color?', context: 'For theme selection' },
-        },
+  it('should pause session when ask_user is called', async () => {
+    // Setup mock responses
+    mockProvider.setResponses([
+      // First response: Agent calls ask_user
+      {
+        content: [
+          { type: 'text', text: 'I need to ask you something' },
+          {
+            type: 'tool_use',
+            id: 'tool_ask',
+            name: 'ask_user',
+            input: { question: 'What is your favorite color?', context: 'For theme selection' },
+          },
+        ],
+        toolCalls: [
+          {
+            id: 'tool_ask',
+            name: 'ask_user',
+            input: { question: 'What is your favorite color?', context: 'For theme selection' },
+          },
+        ],
         stopReason: 'tool_use',
         inputTokens: 1000,
         outputTokens: 100,
-      })
-    );
-
-    // After answer, agent completes
-    mockAnthropicResponses.push(
-      createMockResponse({
-        text: 'Great choice! I will use blue as the primary color.',
+      },
+      // Second response: After answer, agent completes
+      {
+        content: 'Great choice! I will use blue as the primary color.',
         stopReason: 'end_turn',
         inputTokens: 500,
         outputTokens: 50,
-      })
-    );
+      },
+    ]);
 
     const session = await client.startAgent('test-agent', '*test');
 
@@ -109,42 +116,61 @@ describe('Pause/Resume Tests', () => {
     expect(result.finalResponse).toContain('blue');
   });
 
-  it.skip('should handle multiple questions in sequence', async () => {
-    // First question
-    mockAnthropicResponses.push(
-      createMockResponse({
-        toolUse: {
-          name: 'ask_user',
-          input: { question: 'What is your name?' },
-        },
+  it('should handle multiple questions in sequence', async () => {
+    // Setup mock responses
+    mockProvider.setResponses([
+      // First question
+      {
+        content: [
+          { type: 'text', text: 'Let me collect your information' },
+          {
+            type: 'tool_use',
+            id: 'tool_ask_1',
+            name: 'ask_user',
+            input: { question: 'What is your name?' },
+          },
+        ],
+        toolCalls: [
+          {
+            id: 'tool_ask_1',
+            name: 'ask_user',
+            input: { question: 'What is your name?' },
+          },
+        ],
         stopReason: 'tool_use',
         inputTokens: 1000,
         outputTokens: 100,
-      })
-    );
-
-    // Second question
-    mockAnthropicResponses.push(
-      createMockResponse({
-        toolUse: {
-          name: 'ask_user',
-          input: { question: 'What is your email?' },
-        },
+      },
+      // Second question (after receiving first answer)
+      {
+        content: [
+          { type: 'text', text: 'Thank you. Now I need your email.' },
+          {
+            type: 'tool_use',
+            id: 'tool_ask_2',
+            name: 'ask_user',
+            input: { question: 'What is your email?' },
+          },
+        ],
+        toolCalls: [
+          {
+            id: 'tool_ask_2',
+            name: 'ask_user',
+            input: { question: 'What is your email?' },
+          },
+        ],
         stopReason: 'tool_use',
         inputTokens: 800,
         outputTokens: 80,
-      })
-    );
-
-    // Completion
-    mockAnthropicResponses.push(
-      createMockResponse({
-        text: 'Thank you! Profile created.',
+      },
+      // Completion (after receiving second answer)
+      {
+        content: 'Thank you! Profile created.',
         stopReason: 'end_turn',
         inputTokens: 500,
         outputTokens: 50,
-      })
-    );
+      },
+    ]);
 
     const session = await client.startAgent('test-agent', '*test');
 
@@ -169,7 +195,7 @@ describe('Pause/Resume Tests', () => {
     expect(questions).toEqual(['What is your name?', 'What is your email?']);
   });
 
-  it.skip('should throw error if answer() called without pending question', async () => {
+  it('should throw error if answer() called without pending question', async () => {
     const session = await client.startAgent('test-agent', '*test');
 
     expect(() => {

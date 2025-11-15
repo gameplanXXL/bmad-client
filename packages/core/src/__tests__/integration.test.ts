@@ -1,7 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { BmadClient } from '../client.js';
 import { MockLLMProvider } from './mock-llm-provider.js';
-import Anthropic from '@anthropic-ai/sdk';
 
 // Don't mock AgentLoader - we'll use the real one with fixtures
 
@@ -9,7 +8,6 @@ describe('Integration Tests', () => {
   let mockProvider: MockLLMProvider;
 
   beforeEach(async () => {
-    vi.clearAllMocks();
 
     // Create mock provider with default responses
     mockProvider = new MockLLMProvider({
@@ -147,19 +145,31 @@ describe('Integration Tests', () => {
     expect(result.documents[0]?.content).toContain('# Test Document');
   });
 
-  it.skip('should handle session failure gracefully', async () => {
+  it('should handle session failure gracefully', async () => {
+    // Create a provider that throws an error
+    const failingProvider = {
+      async sendMessage() {
+        throw new Error('API Error');
+      },
+      calculateCost() {
+        return 0;
+      },
+      getModelInfo() {
+        return {
+          name: 'failing-model',
+          maxTokens: 100000,
+          inputCostPer1k: 0.003,
+          outputCostPer1k: 0.015,
+        };
+      },
+    };
+
     const client = new BmadClient({
-      provider: { type: 'anthropic', apiKey: 'test-fail-key' },
+      provider: failingProvider,
+      logLevel: 'error',
     });
 
-    // Mock provider to throw an error
-    const mockCreate = vi.fn().mockRejectedValue(new Error('API Error'));
-
-    (Anthropic as any).mockImplementationOnce(() => ({
-      messages: { create: mockCreate },
-    }));
-
-    const session = await client.startAgent('test-agent', '*test');
+    const session = await client.startAgent('pm', '*test');
 
     let failedCalled = false;
     session.on('failed', () => {
@@ -179,37 +189,40 @@ describe('Integration Tests', () => {
     expect(result.duration).toBeGreaterThanOrEqual(0);
   });
 
-  it.skip('should enforce cost limits', async () => {
-    const client = new BmadClient({
-      provider: { type: 'anthropic', apiKey: 'test-cost-limit-key' },
-    });
-
-    // Mock provider to return high token usage
-    const mockCreate = vi.fn().mockResolvedValue({
-      id: 'msg_expensive',
-      type: 'message',
-      role: 'assistant',
-      content: [
-        {
-          type: 'tool_use',
-          id: 'tool_1',
-          name: 'write_file',
-          input: { file_path: '/test.md', content: 'Test' },
-        },
-      ],
-      model: 'claude-sonnet-4-20250514',
-      stop_reason: 'tool_use',
-      usage: {
-        input_tokens: 100000, // High token count
-        output_tokens: 50000,
+  it('should enforce cost limits', async () => {
+    // Create provider with very high token usage
+    const expensiveProvider = new MockLLMProvider();
+    expensiveProvider.addRule({
+      userMessageContains: '*test',
+      response: {
+        content: [
+          {
+            type: 'tool_use',
+            id: 'tool_1',
+            name: 'write_file',
+            input: { file_path: '/test.md', content: 'Test' },
+          },
+        ],
+        toolCalls: [
+          {
+            id: 'tool_1',
+            name: 'write_file',
+            input: { file_path: '/test.md', content: 'Test' },
+          },
+        ],
+        stopReason: 'tool_use',
+        inputTokens: 100000, // High token count (~$0.30)
+        outputTokens: 50000, // High token count (~$0.75)
+        // Total: ~$1.05 > $0.01 limit
       },
     });
 
-    (Anthropic as any).mockImplementationOnce(() => ({
-      messages: { create: mockCreate },
-    }));
+    const client = new BmadClient({
+      provider: expensiveProvider,
+      logLevel: 'error',
+    });
 
-    const session = await client.startAgent('test-agent', '*test', {
+    const session = await client.startAgent('pm', '*test', {
       costLimit: 0.01, // Very low limit ($0.01)
     });
 
