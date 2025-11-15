@@ -189,6 +189,16 @@ Dieses Projekt soll folgende **Core BMad Agenten** unterstützen (via Client Lib
 
 ## Wichtige Arbeitsrichtlinien für Claude Code
 
+### 0. KRITISCHE REGEL: Git Commit & Push Pflicht
+
+**NACH JEDER DATEIÄNDERUNG in diesem Projekt (bmad-client) MUSS:**
+
+1. `git add <geänderte-dateien>` ausgeführt werden
+2. `git commit -m "type: message"` mit aussagekräftiger Message
+3. `git push` zum Remote Repository
+
+**Keine Ausnahmen!** Dies stellt sicher, dass alle Änderungen sofort im Repository gesichert sind.
+
 ### 1. Dateizugriff auf Expansion Packs
 
 **Wenn du Agent-Definitionen, Templates oder Tasks benötigst:**
@@ -225,10 +235,36 @@ Read ../bmad-export-author/.bmad-expert-author/templates/book-blueprint-tmpl.yam
 
 **In diesem Projekt (bmad-client):**
 
+- **KRITISCH: Nach JEDER Dateiänderung MUSS ein git commit und git push erfolgen**
 - Commits erfolgen normal für SDK-Code
 - Dokumentation wird committet
 - Tests werden committet
 - NIEMALS Expansion Pack Dateien committen
+
+**Pflicht-Workflow nach Dateiänderung:**
+
+```bash
+# 1. Status prüfen
+git status
+
+# 2. Änderungen stagen
+git add <geänderte-dateien>
+
+# 3. Commit mit aussagekräftiger Message
+git commit -m "fix/feat/docs: Beschreibung der Änderung"
+
+# 4. Push zum Remote
+git push
+```
+
+**Commit Message Konventionen:**
+
+- `fix:` - Fehlerbehebung
+- `feat:` - Neue Funktion
+- `docs:` - Dokumentationsänderung
+- `refactor:` - Code-Refactoring
+- `test:` - Test-Änderungen
+- `chore:` - Build/Config-Änderungen
 
 ### 4. Testing mit Expansion Packs
 
