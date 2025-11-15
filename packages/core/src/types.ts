@@ -19,6 +19,7 @@ export interface ContentBlock {
   input?: Record<string, unknown>;
   tool_use_id?: string;
   content?: string;
+  is_error?: boolean;
 }
 
 export interface Tool {

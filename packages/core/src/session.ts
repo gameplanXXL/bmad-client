@@ -1307,14 +1307,14 @@ Result: ${result.result}`;
     const session = new BmadSession(client, state.agentId, state.command, state.options);
 
     // Restore session ID (override generated one)
-    // @ts-expect-error - Accessing private field during deserialization
+    // @ts-ignore - Accessing private field during deserialization
     session.id = state.id;
 
     // Restore status
     session.status = state.status;
 
     // Restore timestamps
-    // @ts-expect-error - Accessing private field during deserialization
+    // @ts-ignore - Accessing private field during deserialization
     session.startTime = state.startedAt || state.createdAt;
 
     // Restore messages
@@ -1334,7 +1334,7 @@ Result: ${result.result}`;
     if (state.pendingQuestion) {
       // Create promise for answer
       new Promise<string>((resolve, reject) => {
-        // @ts-expect-error - Accessing private field during deserialization
+        // @ts-ignore - Accessing private field during deserialization
         session.pendingQuestion = {
           question: state.pendingQuestion!.question,
           context: state.pendingQuestion!.context,

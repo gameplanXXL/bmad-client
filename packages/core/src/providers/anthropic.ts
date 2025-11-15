@@ -52,7 +52,7 @@ export class AnthropicProvider implements LLMProvider {
       const anthropicMessages = conversationMessages.map((msg) => ({
         role: msg.role as 'user' | 'assistant',
         content: typeof msg.content === 'string' ? msg.content : this.formatContent(msg.content),
-      }));
+      })) as Anthropic.MessageParam[];
 
       // Convert tools to Anthropic format
       const anthropicTools = tools.map((tool) => ({
