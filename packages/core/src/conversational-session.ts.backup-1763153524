@@ -323,16 +323,6 @@ export class ConversationalSession extends EventEmitter {
 
         // Handle different stop reasons
         if (response.stopReason === 'tool_use' && response.message.toolCalls) {
-          // Debug logging
-          this.client.getLogger().debug('[TOOL_USE] Response received:', {
-            stopReason: response.stopReason,
-            toolCallsCount: response.message.toolCalls?.length || 0,
-            contentIsArray: Array.isArray(response.message.content),
-            contentBlocks: Array.isArray(response.message.content)
-              ? response.message.content.map(c => ({ type: c.type }))
-              : 'string'
-          });
-
           // Execute tools
           this.currentTurnToolCalls.push(...response.message.toolCalls);
 
@@ -342,23 +332,12 @@ export class ConversationalSession extends EventEmitter {
             content: response.message.content,
           });
 
-          this.client.getLogger().debug('[MESSAGES] Added assistant message with tool_use:', {
-            messageIndex: this.messages.length - 1,
-            hasToolUse: Array.isArray(response.message.content) &&
-              response.message.content.some(c => c.type === 'tool_use'),
-          });
-
           // Execute tools and add results
           const toolResults = await this.executeTools(response.message.toolCalls);
 
           this.messages.push({
             role: 'user',
             content: toolResults,
-          });
-
-          this.client.getLogger().debug('[MESSAGES] Added user message with tool_results:', {
-            messageIndex: this.messages.length - 1,
-            toolResultsCount: toolResults.length,
           });
 
           // Continue loop

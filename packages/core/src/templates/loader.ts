@@ -87,6 +87,12 @@ export class TemplateLoader {
     let registered = 0;
     for (const template of templates) {
       try {
+        // Check if template is already registered before attempting to register
+        if (registry.has(template.template.id)) {
+          this.logger?.debug(`Template already registered: ${template.template.id}`);
+          continue;
+        }
+
         registry.register(template);
         registered++;
       } catch (error) {

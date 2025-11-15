@@ -45,7 +45,7 @@ export interface Usage {
 export interface ProviderResponse {
   message: {
     role: 'assistant';
-    content: string;
+    content: string | ContentBlock[];
     toolCalls?: ToolCall[];
   };
   usage: Usage;

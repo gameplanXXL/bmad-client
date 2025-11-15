@@ -23,7 +23,7 @@ const BaseSectionSchema = z.object({
   title: z.string().optional(), // Optional for some legacy templates
   instruction: z.string().optional(),
   content: z.string().optional(), // Static content (non-interactive templates)
-  type: z.enum(['paragraphs', 'bullet-list', 'numbered-list', 'table', 'code', 'custom', 'mermaid', 'choice', 'template-text']).optional(),
+  type: z.enum(['paragraphs', 'bullet-list', 'numbered-list', 'table', 'code', 'custom', 'mermaid', 'choice', 'template-text', 'checklist']).optional(),
   elicit: z.boolean().optional(),
   condition: z.string().optional(),
   repeatable: z.boolean().optional(),
@@ -33,6 +33,10 @@ const BaseSectionSchema = z.object({
   columns: z.array(z.string()).optional(),
   choices: z.union([z.record(z.array(z.string())), z.array(z.string())]).optional(), // Can be object or array
   examples: z.array(z.string()).optional(),
+  items: z.array(z.union([
+    z.string(), // Simple string items
+    z.record(z.any()), // Any object structure (including YAML key-value pairs from [[LLM: ...]] annotations)
+  ])).optional(), // For checklist-style sections
 });
 
 // Recursive type for sections with nested sections
@@ -53,7 +57,7 @@ export const TemplateSchema = z.object({
     output: OutputSchema,
   }),
   workflow: WorkflowSchema.optional(),
-  sections: z.array(SectionSchema),
+  sections: z.array(SectionSchema).optional(), // Optional for non-interactive templates (e.g., YAML-to-YAML templates)
 });
 
 // TypeScript types derived from Zod schemas

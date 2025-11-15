@@ -256,10 +256,9 @@ export class BmadSession extends EventEmitter {
       // Extract final assistant response
       const assistantMessages = this.messages.filter((m) => m.role === 'assistant');
       const lastAssistantMessage = assistantMessages[assistantMessages.length - 1];
-      const finalResponse =
-        typeof lastAssistantMessage?.content === 'string'
-          ? lastAssistantMessage.content
-          : undefined;
+      const finalResponse = lastAssistantMessage
+        ? this.extractTextContent(lastAssistantMessage.content)
+        : undefined;
 
       const result: SessionResult = {
         status: 'completed',
@@ -734,6 +733,24 @@ Please follow the agent activation instructions and execute this command.`;
 Result: ${result.result}`;
       })
       .join('\n\n');
+  }
+
+  /**
+   * Extract text content from message content (string or content blocks array)
+   */
+  private extractTextContent(content: string | any[]): string {
+    if (typeof content === 'string') {
+      return content;
+    }
+
+    if (Array.isArray(content)) {
+      return content
+        .filter((block: any) => block.type === 'text')
+        .map((block: any) => block.text)
+        .join('\n');
+    }
+
+    return '';
   }
 
   /**

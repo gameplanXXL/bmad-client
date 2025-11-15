@@ -166,14 +166,11 @@ export class AnthropicProvider implements LLMProvider {
    * Parse Anthropic API response to ProviderResponse
    */
   private parseResponse(response: Anthropic.Messages.Message): ProviderResponse {
-    // Extract text content
-    let textContent = '';
+    // Extract tool calls for convenience
     const toolCalls: ToolCall[] = [];
 
     for (const block of response.content) {
-      if (block.type === 'text') {
-        textContent += block.text;
-      } else if (block.type === 'tool_use') {
+      if (block.type === 'tool_use') {
         toolCalls.push({
           id: block.id,
           name: block.name,
@@ -182,10 +179,28 @@ export class AnthropicProvider implements LLMProvider {
       }
     }
 
+    // Convert content blocks to our format
+    const contentBlocks = response.content.map((block) => {
+      if (block.type === 'text') {
+        return {
+          type: 'text',
+          text: block.text,
+        };
+      } else if (block.type === 'tool_use') {
+        return {
+          type: 'tool_use',
+          id: block.id,
+          name: block.name,
+          input: block.input as Record<string, unknown>,
+        };
+      }
+      return block as any;
+    });
+
     return {
       message: {
         role: 'assistant',
-        content: textContent,
+        content: contentBlocks,
         toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
       },
       usage: {
