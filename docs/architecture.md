@@ -4,6 +4,14 @@
 
 This document defines the architecture for **BMad Client Library**, a Node.js/TypeScript SDK that enables developers to integrate BMad-Method workflows into web and desktop applications.
 
+### Related Architecture Documentation
+
+This document provides the **high-level architecture overview**. For detailed information, refer to:
+
+- **[Technology Stack](./architecture/tech-stack.md)** - Comprehensive technology stack, dependencies, and build tools
+- **[Coding Standards](./architecture/coding-standards.md)** - TypeScript conventions, naming standards, and best practices
+- **[Source Tree Structure](./architecture/source-tree.md)** - Complete directory structure and file organization
+
 ### Design Philosophy
 
 **Claude Code Emulation:** BMad agents are designed to work within Claude Code's environment. This SDK replicates that environment through:
@@ -88,6 +96,8 @@ This document defines the architecture for **BMad Client Library**, a Node.js/Ty
 - Vitest - Testing
 - tsup - Build tool
 - TypeDoc - API documentation
+
+**For comprehensive technology stack details, see:** [`docs/architecture/tech-stack.md`](./architecture/tech-stack.md)
 
 ---
 
