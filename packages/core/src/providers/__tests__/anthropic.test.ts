@@ -108,7 +108,7 @@ describe('AnthropicProvider', () => {
         ],
       });
 
-      expect(response.message.content).toBe('Hello! How can I help?');
+      expect(response.message.content).toEqual([{ type: 'text', text: 'Hello! How can I help?' }]);
       expect(response.usage.inputTokens).toBe(100);
       expect(response.usage.outputTokens).toBe(20);
       expect(response.stopReason).toBe('end_turn');
@@ -138,7 +138,15 @@ describe('AnthropicProvider', () => {
 
       const response = await provider.sendMessage(messages, tools);
 
-      expect(response.message.content).toBe('Let me read that file.');
+      expect(response.message.content).toEqual([
+        { type: 'text', text: 'Let me read that file.' },
+        {
+          type: 'tool_use',
+          id: 'tool_123',
+          name: 'read_file',
+          input: { path: '/test.txt' },
+        },
+      ]);
       expect(response.message.toolCalls).toHaveLength(1);
       expect(response.message.toolCalls?.[0]).toEqual({
         id: 'tool_123',

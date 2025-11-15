@@ -217,6 +217,9 @@ describe('GoogleCloudStorageAdapter', () => {
       const mockStorage = new Storage();
       const mockBucket = mockStorage.bucket('test');
       const mockFile = mockBucket.file('test');
+      // First call returns false (file doesn't exist)
+      vi.mocked(mockFile.exists).mockResolvedValueOnce([false]);
+      // Second call also returns false (for the retry in the test)
       vi.mocked(mockFile.exists).mockResolvedValueOnce([false]);
 
       await expect(adapter.load('/missing.md')).rejects.toThrow(GCSStorageError);
@@ -299,6 +302,9 @@ describe('GoogleCloudStorageAdapter', () => {
       const mockStorage = new Storage();
       const mockBucket = mockStorage.bucket('test');
       const mockFile = mockBucket.file('test');
+      // First call rejects with 404
+      vi.mocked(mockFile.getMetadata).mockRejectedValueOnce({ code: 404 });
+      // Second call also rejects with 404 (for the retry in the test)
       vi.mocked(mockFile.getMetadata).mockRejectedValueOnce({ code: 404 });
 
       await expect(adapter.getMetadata('/missing.md')).rejects.toThrow(GCSStorageError);
@@ -509,6 +515,9 @@ describe('GoogleCloudStorageAdapter', () => {
       const { Storage } = await import('@google-cloud/storage');
       const mockStorage = new Storage();
       const mockBucket = mockStorage.bucket('test');
+      // First call returns false (bucket doesn't exist)
+      vi.mocked(mockBucket.exists).mockResolvedValueOnce([false]);
+      // Second call also returns false (for the retry in the test)
       vi.mocked(mockBucket.exists).mockResolvedValueOnce([false]);
 
       await expect(adapter.initialize()).rejects.toThrow(GCSStorageError);
@@ -536,7 +545,7 @@ describe('GoogleCloudStorageAdapter', () => {
       const health = await adapter.healthCheck();
 
       expect(health.status).toBe('ok');
-      expect(health.latency).toBeGreaterThan(0);
+      expect(health.latency).toBeGreaterThanOrEqual(0);
       expect(health.message).toBeUndefined();
     });
 

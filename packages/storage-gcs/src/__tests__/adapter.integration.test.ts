@@ -2,10 +2,11 @@
  * Integration tests for GoogleCloudStorageAdapter
  *
  * These tests run against a real GCS bucket (or emulator).
- * Set SKIP_GCS_INTEGRATION=true to skip these tests.
+ * By default, these tests are SKIPPED. To run them, set SKIP_GCS_INTEGRATION=false.
  *
  * Required environment variables:
- * - GCS_TEST_BUCKET: Name of test bucket
+ * - SKIP_GCS_INTEGRATION: Set to "false" to run integration tests (default: skip)
+ * - GCS_TEST_BUCKET: Name of test bucket (default: bmad-test-bucket)
  * - GCS_PROJECT_ID (optional): GCP project ID
  * - GOOGLE_APPLICATION_CREDENTIALS (optional): Path to service account key
  */
@@ -14,7 +15,8 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { GoogleCloudStorageAdapter, GCSStorageError } from '../adapter.js';
 import type { Document, StorageMetadata } from '@bmad/client';
 
-const SKIP_INTEGRATION = process.env.SKIP_GCS_INTEGRATION === 'true';
+// Skip integration tests by default (set SKIP_GCS_INTEGRATION=false to run)
+const SKIP_INTEGRATION = process.env.SKIP_GCS_INTEGRATION !== 'false';
 const TEST_BUCKET = process.env.GCS_TEST_BUCKET || 'bmad-test-bucket';
 const PROJECT_ID = process.env.GCS_PROJECT_ID;
 
@@ -31,15 +33,7 @@ describe.skipIf(SKIP_INTEGRATION)('GoogleCloudStorageAdapter Integration', () =>
     });
 
     // Initialize and verify bucket exists
-    try {
-      await adapter.initialize();
-    } catch (error) {
-      console.warn(
-        `⚠️  GCS Integration tests skipped: ${(error as Error).message}\n` +
-          `   Set GCS_TEST_BUCKET and ensure bucket exists.`
-      );
-      throw error;
-    }
+    await adapter.initialize();
   });
 
   beforeEach(() => {
