@@ -373,12 +373,34 @@ export class ConversationalSession extends EventEmitter {
             content: response.message.content,
           });
 
+          // Emit message event for assistant response
+          this.emit('message', {
+            role: 'assistant',
+            content: textContent,
+            usage: {
+              input_tokens: response.usage.inputTokens,
+              output_tokens: response.usage.outputTokens,
+              total_tokens: response.usage.inputTokens + response.usage.outputTokens,
+            },
+          });
+
           continueLoop = false;
         } else {
           // Other stop reasons (max_tokens, stop_sequence)
           this.messages.push({
             role: 'assistant',
             content: response.message.content,
+          });
+
+          // Emit message event for assistant response
+          this.emit('message', {
+            role: 'assistant',
+            content: textContent,
+            usage: {
+              input_tokens: response.usage.inputTokens,
+              output_tokens: response.usage.outputTokens,
+              total_tokens: response.usage.inputTokens + response.usage.outputTokens,
+            },
           });
 
           continueLoop = false;
@@ -388,7 +410,11 @@ export class ConversationalSession extends EventEmitter {
         if (textContent && this.isQuestion(textContent)) {
           // Pause for answer
           continueLoop = false;
-          await this.waitForAnswer(textContent);
+          await this.waitForAnswer(textContent, {
+            input_tokens: response.usage.inputTokens,
+            output_tokens: response.usage.outputTokens,
+            total_tokens: response.usage.inputTokens + response.usage.outputTokens,
+          });
           // After answer, continue processing
           continueLoop = true;
         }
@@ -470,7 +496,10 @@ export class ConversationalSession extends EventEmitter {
     return text.trim().endsWith('?');
   }
 
-  private async waitForAnswer(question: string): Promise<void> {
+  private async waitForAnswer(
+    question: string,
+    usage?: { input_tokens: number; output_tokens: number; total_tokens: number }
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
       this.status = 'waiting_for_answer';
       this.pendingQuestion = {
@@ -483,7 +512,7 @@ export class ConversationalSession extends EventEmitter {
         reject,
       };
 
-      this.emit('question', { question });
+      this.emit('question', { question, usage });
 
       // TODO: Implement timeout
     });
