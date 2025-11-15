@@ -6,6 +6,7 @@ import type {
   ConversationResult,
   ConversationalStatus,
   Message,
+  ContentBlock,
   AgentDefinition,
   CostReport,
   Document,
@@ -271,7 +272,7 @@ export class ConversationalSession extends EventEmitter {
         this.status = 'error';
         this.emit('error', error);
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Handle initialization errors
       this.client.getLogger().error('Initialization failed', { error });
       this.status = 'error';
@@ -302,11 +303,8 @@ export class ConversationalSession extends EventEmitter {
       // Tool call loop (like BmadSession.execute)
       let agentResponse = '';
       let continueLoop = true;
-      let loopCount = 0;
 
       while (continueLoop) {
-        loopCount++;
-
         // Send messages to LLM
         const response = await this.provider!.sendMessage(
           this.messages,
@@ -427,23 +425,23 @@ export class ConversationalSession extends EventEmitter {
     }
   }
 
-  private extractTextContent(content: string | any[]): string {
+  private extractTextContent(content: string | ContentBlock[]): string {
     if (typeof content === 'string') {
       return content;
     }
 
     if (Array.isArray(content)) {
       return content
-        .filter((block: any) => block.type === 'text')
-        .map((block: any) => block.text)
+        .filter((block: ContentBlock) => block.type === 'text')
+        .map((block: ContentBlock) => block.text ?? '')
         .join('\n');
     }
 
     return '';
   }
 
-  private async executeTools(toolCalls: ToolCall[]): Promise<any[]> {
-    const results = [];
+  private async executeTools(toolCalls: ToolCall[]): Promise<ContentBlock[]> {
+    const results: ContentBlock[] = [];
 
     for (const toolCall of toolCalls) {
       try {
@@ -453,11 +451,12 @@ export class ConversationalSession extends EventEmitter {
           tool_use_id: toolCall.id,
           content: result.content,
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         results.push({
           type: 'tool_result',
           tool_use_id: toolCall.id,
-          content: `Error: ${error.message}`,
+          content: `Error: ${errorMessage}`,
           is_error: true,
         });
       }

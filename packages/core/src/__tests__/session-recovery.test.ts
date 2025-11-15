@@ -280,9 +280,10 @@ describe('Session Recovery and Auto-Save', () => {
 
     it('should delete session', async () => {
       const sessions = await client.listSessions();
-      const sessionToDelete = sessions?.sessions[0]?.sessionId!;
+      const sessionToDelete = sessions?.sessions[0]?.sessionId;
+      expect(sessionToDelete).toBeDefined();
 
-      const deleted = await client.deleteSession(sessionToDelete);
+      const deleted = await client.deleteSession(sessionToDelete!);
       expect(deleted).toBe(true);
 
       // Verify session is gone

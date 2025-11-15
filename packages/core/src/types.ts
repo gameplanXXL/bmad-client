@@ -287,6 +287,7 @@ export interface StorageConfig {
   credentials?: Record<string, unknown>;
 
   // Custom adapter
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   adapter?: any; // StorageAdapter (avoiding circular dependency)
 }
 

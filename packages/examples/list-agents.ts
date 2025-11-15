@@ -130,6 +130,7 @@ async function listAgents() {
 }
 
 // Example: Filter agents by category
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function _filterAgentsByRole(_role: string) {
   console.log(`\n🔎 Filtering agents by role: "${_role}"`);
 
@@ -165,7 +166,7 @@ async function _filterAgentsByRole(_role: string) {
 
     if (readResult.success) {
       const { data } = matter(readResult.content!);
-      if (data.persona?.role?.toLowerCase().includes(role.toLowerCase())) {
+      if (data.persona?.role?.toLowerCase().includes(_role.toLowerCase())) {
         matchingAgents.push({
           id: data.agent?.id,
           title: data.agent?.title,
@@ -175,7 +176,7 @@ async function _filterAgentsByRole(_role: string) {
     }
   }
 
-  console.log(`Found ${matchingAgents.length} agents with role containing "${role}":`);
+  console.log(`Found ${matchingAgents.length} agents with role containing "${_role}":`);
   matchingAgents.forEach((agent) => {
     console.log(`  ${agent.icon} ${agent.title} (${agent.id})`);
   });

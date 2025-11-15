@@ -5,6 +5,7 @@ import type {
   SessionResult,
   SessionStatus,
   Message,
+  ContentBlock,
   AgentDefinition,
   CostReport,
   ModelCost,
@@ -926,15 +927,15 @@ Result: ${result.result}`;
   /**
    * Extract text content from message content (string or content blocks array)
    */
-  private extractTextContent(content: string | any[]): string {
+  private extractTextContent(content: string | ContentBlock[]): string {
     if (typeof content === 'string') {
       return content;
     }
 
     if (Array.isArray(content)) {
       return content
-        .filter((block: any) => block.type === 'text')
-        .map((block: any) => block.text)
+        .filter((block: ContentBlock) => block.type === 'text')
+        .map((block: ContentBlock) => block.text ?? '')
         .join('\n');
     }
 
@@ -1306,13 +1307,15 @@ Result: ${result.result}`;
     const session = new BmadSession(client, state.agentId, state.command, state.options);
 
     // Restore session ID (override generated one)
-    (session as any).id = state.id;
+    // @ts-expect-error - Accessing private field during deserialization
+    session.id = state.id;
 
     // Restore status
     session.status = state.status;
 
     // Restore timestamps
-    (session as any).startTime = state.startedAt || state.createdAt;
+    // @ts-expect-error - Accessing private field during deserialization
+    session.startTime = state.startedAt || state.createdAt;
 
     // Restore messages
     session.messages = state.messages;
@@ -1331,7 +1334,8 @@ Result: ${result.result}`;
     if (state.pendingQuestion) {
       // Create promise for answer
       new Promise<string>((resolve, reject) => {
-        (session as any).pendingQuestion = {
+        // @ts-expect-error - Accessing private field during deserialization
+        session.pendingQuestion = {
           question: state.pendingQuestion!.question,
           context: state.pendingQuestion!.context,
           resolve,

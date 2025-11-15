@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type {
   LLMProvider,
   Message,
+  ContentBlock,
   Tool,
   ProviderResponse,
   ProviderOptions,
@@ -50,8 +51,7 @@ export class AnthropicProvider implements LLMProvider {
       // Convert messages to Anthropic format
       const anthropicMessages = conversationMessages.map((msg) => ({
         role: msg.role as 'user' | 'assistant',
-        content:
-          typeof msg.content === 'string' ? msg.content : (this.formatContent(msg.content) as any),
+        content: typeof msg.content === 'string' ? msg.content : this.formatContent(msg.content),
       }));
 
       // Convert tools to Anthropic format
@@ -181,7 +181,7 @@ export class AnthropicProvider implements LLMProvider {
     }
 
     // Convert content blocks to our format
-    const contentBlocks = response.content.map((block) => {
+    const contentBlocks: ContentBlock[] = response.content.map((block) => {
       if (block.type === 'text') {
         return {
           type: 'text',
@@ -195,7 +195,8 @@ export class AnthropicProvider implements LLMProvider {
           input: block.input as Record<string, unknown>,
         };
       }
-      return block as any;
+      // Fallback for unknown block types
+      return block as ContentBlock;
     });
 
     return {

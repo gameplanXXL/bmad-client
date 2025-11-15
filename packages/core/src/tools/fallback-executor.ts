@@ -1,4 +1,4 @@
-import type { Tool, ToolCall } from '../types.js';
+import type { Tool, ToolCall, ChildSessionCost, Document } from '../types.js';
 import { minimatch } from 'minimatch';
 import { CommandExecutor, type CommandConfig } from './command-executor.js';
 
@@ -33,12 +33,14 @@ interface ToolResult {
  */
 export class FallbackToolExecutor {
   private vfs: Map<string, VirtualFile> = new Map();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private session?: any; // Session reference (set after construction to avoid circular dependency)
   private commandExecutor?: CommandExecutor; // Optional command executor for execute_command tool
 
   /**
    * Set session reference (needed for invoke_agent)
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setSession(session: any): void {
     this.session = session;
   }
@@ -791,7 +793,7 @@ Examples:
       }
 
       // Add child costs to parent
-      const childCost: any = {
+      const childCost: ChildSessionCost = {
         sessionId: childSession.id,
         agent: agentId,
         command,
@@ -829,7 +831,7 @@ Examples:
         status: 'completed',
         agent: agentId,
         command,
-        documents: result.documents.map((d: any) => ({
+        documents: result.documents.map((d: Document) => ({
           path: d.path,
           size: d.content.length,
         })),

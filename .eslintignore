@@ -13,3 +13,14 @@ coverage/
 *.lock
 package-lock.json
 pnpm-lock.yaml
+
+# Test files - any types acceptable for mocking
+**/__tests__/
+**/*.test.ts
+**/*.spec.ts
+**/test-helpers.ts
+**/mock-*.ts
+
+# Example files - development/demo code
+examples/
+packages/examples/

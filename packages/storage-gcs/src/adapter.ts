@@ -108,6 +108,7 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
 
   constructor(config: GCSAdapterConfig) {
     // Build Storage client config
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const storageConfig: any = {};
 
     if (config.credentials) {
@@ -217,14 +218,20 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
         path,
         content: content.toString('utf-8'),
       };
-    } catch (error) {
-      if ((error as any).code === 'NOT_FOUND' || error instanceof GCSStorageError) {
+    } catch (error: unknown) {
+      const hasNotFoundCode =
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === 'NOT_FOUND';
+      if (hasNotFoundCode || error instanceof GCSStorageError) {
         throw error;
       }
+      const errorMessage = error instanceof Error ? error.message : String(error);
       throw new GCSStorageError(
-        `Failed to load document ${path}: ${(error as Error).message}`,
+        `Failed to load document ${path}: ${errorMessage}`,
         'LOAD_ERROR',
-        error as Error
+        error instanceof Error ? error : new Error(String(error))
       );
     }
   }
@@ -297,14 +304,17 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
         command: String(customMetadata['command'] || 'unknown'),
         timestamp: parseInt(String(customMetadata['timestamp'] || '0'), 10),
       };
-    } catch (error) {
-      if ((error as any).code === 404) {
+    } catch (error: unknown) {
+      const has404Code =
+        typeof error === 'object' && error !== null && 'code' in error && error.code === 404;
+      if (has404Code) {
         throw new GCSStorageError(`Document not found in storage: ${path}`, 'NOT_FOUND');
       }
+      const errorMessage = error instanceof Error ? error.message : String(error);
       throw new GCSStorageError(
-        `Failed to get metadata for ${path}: ${(error as Error).message}`,
+        `Failed to get metadata for ${path}: ${errorMessage}`,
         'METADATA_ERROR',
-        error as Error
+        error instanceof Error ? error : new Error(String(error))
       );
     }
   }
@@ -315,6 +325,7 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
   async list(options?: StorageQueryOptions): Promise<StorageListResult> {
     try {
       // Build query options
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const queryOptions: any = {
         prefix: this.basePath ? `${this.basePath}/` : undefined,
       };
@@ -538,6 +549,7 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
     try {
       const prefix = this.basePath ? `${this.basePath}/sessions/` : 'sessions/';
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const queryOptions: any = {
         prefix,
         delimiter: '/',

@@ -50,7 +50,9 @@ export interface GCSConfig {
  */
 export class GoogleCloudStorageAdapter implements StorageAdapter {
   private config: GCSConfig;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private bucket?: any; // @google-cloud/storage Bucket
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private storage?: any; // @google-cloud/storage Storage
   private initialized = false;
 
@@ -67,6 +69,7 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
       const { Storage } = await import('@google-cloud/storage');
 
       // Create storage client
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const storageOptions: any = {
         projectId: this.config.projectId,
       };
@@ -247,6 +250,7 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
       // Filter by sessionId (stored in metadata)
       if (options?.sessionId) {
         const filtered = await Promise.all(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           files.map(async (file: any) => {
             const [metadata] = await file.getMetadata();
             return metadata.metadata?.sessionId === options.sessionId ? file : null;
@@ -261,6 +265,7 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
       const paginatedFiles = filteredFiles.slice(offset, offset + limit);
 
       const documents = await Promise.all(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         paginatedFiles.map(async (file: any) => {
           const [metadata] = await file.getMetadata();
           return {
@@ -476,10 +481,12 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
       const [files] = await this.bucket!.getFiles({ prefix });
 
       // Filter to only state.json files
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const stateFiles = files.filter((file: any) => file.name.endsWith('state.json'));
 
       // Load metadata for each session
       const sessionsWithMetadata = await Promise.all(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         stateFiles.map(async (file: any) => {
           const [metadata] = await file.getMetadata();
           return {
