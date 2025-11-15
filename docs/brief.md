@@ -88,8 +88,8 @@ import { BmadClient } from 'bmad-client';
 
 const client = new BmadClient({
   provider: { type: 'anthropic', apiKey: process.env.ANTHROPIC_KEY },
-  costLimit: 5.00,
-  logLevel: 'info'
+  costLimit: 5.0,
+  logLevel: 'info',
 });
 
 const session = await client.startAgent('pm', 'create-prd');
@@ -104,7 +104,7 @@ const result = await session.execute();
 
 // Documents are in VFS, can be saved to storage
 console.log(`PRD created! Cost: $${result.costs.totalCost}`);
-console.log(`Documents: ${result.documents.map(d => d.path).join(', ')}`);
+console.log(`Documents: ${result.documents.map((d) => d.path).join(', ')}`);
 ```
 
 ---
@@ -114,18 +114,21 @@ console.log(`Documents: ${result.documents.map(d => d.path).join(', ')}`);
 ### Primary User Segment: Backend Developers Building AI-Powered Applications
 
 **Demographic/Firmographic Profile:**
+
 - Backend/full-stack developers at startups and SaaS companies
 - Teams building project management tools, no-code platforms, AI IDEs
 - Technical founders creating AI-native products
 - Freelance developers building custom solutions for clients
 
 **Current Behaviors & Workflows:**
+
 - Integrate third-party APIs (Stripe, Twilio, OpenAI) into Node.js backends
 - Build REST/GraphQL APIs consumed by frontend applications
 - Deploy to cloud platforms (Google Cloud, AWS, Vercel)
 - Use NPM packages and evaluate libraries based on documentation and TypeScript support
 
 **Specific Needs & Pain Points:**
+
 - Need to add AI-powered product development workflows to their applications
 - Want to avoid building complex agent orchestration from scratch
 - Require cost tracking and limits for production use
@@ -133,6 +136,7 @@ console.log(`Documents: ${result.documents.map(d => d.path).join(', ')}`);
 - Want flexibility to switch LLM providers (not vendor-locked)
 
 **Goals They're Trying to Achieve:**
+
 - Ship AI features faster by using pre-built components
 - Provide value-add features (automated PRD generation, architecture design) to their users
 - Control costs and prevent runaway LLM API expenses
@@ -141,17 +145,20 @@ console.log(`Documents: ${result.documents.map(d => d.path).join(', ')}`);
 ### Secondary User Segment: Platform Teams Enabling Internal Developers
 
 **Profile:**
+
 - Engineering platform teams at mid-to-large companies
 - DevOps/infrastructure teams building internal developer tools
 - Innovation labs exploring AI-assisted development
 
 **Needs:**
+
 - Standardize product development processes across teams using BMad-Method
 - Provide self-service tools for non-technical stakeholders (PMs, designers)
 - Track and allocate AI costs by team/project
 - Integrate with existing document storage and workflows
 
 **Goals:**
+
 - Accelerate internal product development cycles
 - Democratize access to structured development methodologies
 - Measure ROI of AI tooling investments
@@ -244,28 +251,33 @@ console.log(`Documents: ${result.documents.map(d => d.path).join(', ')}`);
 ### Phase 2 Features
 
 **Enhanced Session Management:**
+
 - Workflow checkpoints and rollback
 - Session templates for common flows (e.g., "Full Product Lifecycle")
 - Concurrent session execution with resource limits
 
 **Advanced Cost Management:**
+
 - Predictive cost estimation before execution
 - Multi-model routing (use cheaper models for simple tasks)
 - Cost allocation by user/team/project
 - Budget pools and quotas
 
 **Storage Flexibility:**
+
 - AWS S3 adapter
 - Azure Blob Storage adapter
 - Local filesystem option
 - Database storage (PostgreSQL, MongoDB)
 
 **Tool Execution Evolution:**
+
 - Real filesystem access for brownfield projects (read actual code)
 - External command execution (pandoc, pdflatex, etc.) for asset generation
 - Database query execution for data-driven workflows
 
 **Developer Experience:**
+
 - CLI wrapper for testing sessions locally
 - Web-based session debugger
 - VSCode extension for agent development
@@ -273,22 +285,26 @@ console.log(`Documents: ${result.documents.map(d => d.path).join(', ')}`);
 ### Long-Term Vision (1-2 Years)
 
 **BMad Ecosystem Platform:**
+
 - Official expansion pack marketplace
 - Community-contributed agents and templates
 - Certification program for high-quality plugins
 
 **Enterprise Features:**
+
 - SSO/SAML integration
 - Audit logging and compliance features
 - Multi-tenancy with org-level controls
 - SLA guarantees and dedicated support
 
 **AI Model Evolution:**
+
 - Fine-tuned models for specific BMad agents
 - Agentic workflows with autonomous decision-making
 - Self-improving agents based on feedback loops
 
 **Vertical Solutions:**
+
 - Prebuilt integrations for specific platforms (Notion, Confluence, GitHub)
 - Industry-specific agent packs (FinTech, HealthTech, GameDev, etc.)
 - White-label SDKs for OEMs
@@ -374,11 +390,11 @@ console.log(`Documents: ${result.documents.map(d => d.path).join(', ')}`);
 
 ### Key Risks
 
-- **API Changes:** Anthropic or OpenAI could change APIs, breaking integrations. *Mitigation: Abstract provider interface, version pinning, automated testing against APIs*
-- **Cost Overruns:** Users could exceed budgets despite tracking. *Mitigation: Hard limits, clear documentation, pre-execution estimates*
-- **Session Complexity:** Pause/resume may be fragile with complex workflows. *Mitigation: Comprehensive state management, extensive testing, clear error messages*
-- **Adoption Challenges:** Developers may prefer building custom solutions. *Mitigation: Exceptional documentation, starter templates, showcase applications*
-- **Expansion Pack Quality:** Low-quality community agents could hurt reputation. *Mitigation: Optional certification program, community reviews, clear guidelines*
+- **API Changes:** Anthropic or OpenAI could change APIs, breaking integrations. _Mitigation: Abstract provider interface, version pinning, automated testing against APIs_
+- **Cost Overruns:** Users could exceed budgets despite tracking. _Mitigation: Hard limits, clear documentation, pre-execution estimates_
+- **Session Complexity:** Pause/resume may be fragile with complex workflows. _Mitigation: Comprehensive state management, extensive testing, clear error messages_
+- **Adoption Challenges:** Developers may prefer building custom solutions. _Mitigation: Exceptional documentation, starter templates, showcase applications_
+- **Expansion Pack Quality:** Low-quality community agents could hurt reputation. _Mitigation: Optional certification program, community reviews, clear guidelines_
 
 ### Open Questions
 
@@ -408,6 +424,7 @@ console.log(`Documents: ${result.documents.map(d => d.path).join(', ')}`);
 **(To be populated based on prior analysis)**
 
 Key findings from BMad-Method CLI analysis:
+
 - Agent system uses markdown-based definitions with YAML frontmatter
 - Templates are YAML files with section-based structure
 - Tasks are markdown workflows with elicitation steps
@@ -415,6 +432,7 @@ Key findings from BMad-Method CLI analysis:
 - Tool system mirrors Claude Code's tool set (Read, Write, Edit, Bash, Grep, Glob, etc.)
 
 Competitive analysis:
+
 - **Langchain/LangGraph:** Generic agent frameworks, not domain-specific
 - **Vercel AI SDK:** Streaming-focused, no BMad-specific features
 - **Cursor/v0.dev:** Closed ecosystems, not embeddable
@@ -425,6 +443,7 @@ Competitive analysis:
 Primary stakeholder: BMad-Method community and potential integrators
 
 Feedback themes (expected):
+
 - Need for production-ready cost management
 - Desire for flexible storage options
 - Request for comprehensive TypeScript support

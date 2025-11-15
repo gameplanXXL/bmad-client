@@ -84,10 +84,7 @@ export class InMemoryStorageAdapter implements StorageAdapter {
   /**
    * Save multiple documents in batch
    */
-  async saveBatch(
-    documents: Document[],
-    metadata: StorageMetadata
-  ): Promise<StorageResult[]> {
+  async saveBatch(documents: Document[], metadata: StorageMetadata): Promise<StorageResult[]> {
     const results: StorageResult[] = [];
 
     for (const document of documents) {

@@ -15,6 +15,7 @@ ANTHROPIC_API_KEY=sk-... npx tsx packages/examples/conversational-session.ts
 ```
 
 **What it shows:**
+
 - Starting a conversational session
 - Sending multiple messages with context retention
 - Handling agent questions (elicitation)
@@ -24,6 +25,7 @@ ANTHROPIC_API_KEY=sk-... npx tsx packages/examples/conversational-session.ts
 - Ending conversation and getting final results
 
 **Key Features:**
+
 - **Persistent Context:** VFS and conversation history maintained across turns
 - **Natural Flow:** Send follow-up messages like "update that" or "what did we decide?"
 - **Interactive:** Type messages in a REPL-style interface
@@ -62,6 +64,7 @@ curl -X POST http://localhost:3000/conversations/conv_123.../end
 ```
 
 **Architecture:**
+
 - **POST /conversations** - Start conversation, return ID immediately (202 Accepted)
 - **POST /conversations/:id/messages** - Send message, return immediately
 - **GET /conversations/:id** - Poll status (returns current state)
@@ -71,6 +74,7 @@ curl -X POST http://localhost:3000/conversations/conv_123.../end
 - **POST /conversations/:id/end** - End conversation
 
 **Solves HTTP Timeout Problem:**
+
 - All endpoints return immediately (< 100ms)
 - Long-running LLM operations happen in background
 - Client polls for status updates
@@ -85,11 +89,13 @@ npx tsx packages/examples/expansion-pack-loading.ts
 ```
 
 **What it shows:**
+
 - Auto-discovery of expansion packs from parent directory
 - Manual expansion pack discovery using AgentLoader
 - Listing agents from discovered packs
 
 **Requirements:**
+
 - Expansion packs must be in `.bmad-*` directories (e.g., `.bmad-expert-author/`)
 - Each pack must have an `agents/` subdirectory with agent definition markdown files
 - Agent files must follow the BMad agent schema (YAML frontmatter)
@@ -151,11 +157,10 @@ To specify custom expansion pack search paths:
 
 ```typescript
 const client = new BmadClient({
-  provider: { /* ... */ },
-  expansionPackPaths: [
-    '../custom-location/',
-    '/absolute/path/to/packs/'
-  ]
+  provider: {
+    /* ... */
+  },
+  expansionPackPaths: ['../custom-location/', '/absolute/path/to/packs/'],
 });
 ```
 

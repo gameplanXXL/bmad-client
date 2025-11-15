@@ -20,14 +20,9 @@ export {
   getTemplateSummary,
 } from './parser.js';
 
-export {
-  TemplateRegistry,
-  TemplateNotFoundError,
-} from './registry.js';
+export { TemplateRegistry, TemplateNotFoundError } from './registry.js';
 
-export {
-  TemplateLoader,
-} from './loader.js';
+export { TemplateLoader } from './loader.js';
 
 export {
   DocumentGenerator,

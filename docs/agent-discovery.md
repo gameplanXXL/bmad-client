@@ -20,13 +20,13 @@ BMad Client provides a **VFS-based approach** for agent discovery and metadata i
 
 ### Comparison:
 
-| Aspect | Traditional Registry | VFS-Based |
-|--------|---------------------|-----------|
-| Discovery | `registry.list()` | `glob_pattern('/.bmad-core/agents/*.md')` |
-| Access | `registry.get(id)` | `read_file(path)` |
-| Updates | Manual registration | Automatic via VFS |
-| Filtering | Limited API | Full glob pattern support |
-| Expansion Packs | Separate loading | Integrated automatically |
+| Aspect          | Traditional Registry | VFS-Based                                 |
+| --------------- | -------------------- | ----------------------------------------- |
+| Discovery       | `registry.list()`    | `glob_pattern('/.bmad-core/agents/*.md')` |
+| Access          | `registry.get(id)`   | `read_file(path)`                         |
+| Updates         | Manual registration  | Automatic via VFS                         |
+| Filtering       | Limited API          | Full glob pattern support                 |
+| Expansion Packs | Separate loading     | Integrated automatically                  |
 
 ---
 
@@ -40,8 +40,8 @@ import { BmadClient } from '@bmad/client';
 const client = new BmadClient({
   provider: {
     type: 'anthropic',
-    apiKey: process.env.ANTHROPIC_API_KEY!
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY!,
+  },
 });
 
 // Start any agent session to get VFS access
@@ -56,8 +56,8 @@ const globResult = await executor.executeTool({
   id: 'discover-agents',
   name: 'glob_pattern',
   input: {
-    pattern: '/.bmad-core/agents/*.md'
-  }
+    pattern: '/.bmad-core/agents/*.md',
+  },
 });
 
 const agentPaths = globResult.content!.split('\n').filter(Boolean);
@@ -71,8 +71,8 @@ const readResult = await executor.executeTool({
   id: 'read-agent',
   name: 'read_file',
   input: {
-    file_path: agentPaths[0]
-  }
+    file_path: agentPaths[0],
+  },
 });
 
 const agentMarkdown = readResult.content!;
@@ -91,7 +91,7 @@ console.log('Agent Metadata:', {
   icon: data.agent.icon,
   whenToUse: data.agent.whenToUse,
   commands: data.commands,
-  persona: data.persona
+  persona: data.persona,
 });
 ```
 
@@ -103,26 +103,26 @@ Agent markdown files use YAML frontmatter with this structure:
 
 ```yaml
 agent:
-  name: string           # Display name
-  id: string             # Unique identifier
-  title: string          # Job title
-  icon: string           # Emoji icon
-  whenToUse: string      # Description of use cases
+  name: string # Display name
+  id: string # Unique identifier
+  title: string # Job title
+  icon: string # Emoji icon
+  whenToUse: string # Description of use cases
 
 persona:
-  role: string           # Agent role
-  style: string          # Communication style
-  identity: string       # Agent identity
-  focus: string          # Primary focus
-  core_principles:       # Array of principles
+  role: string # Agent role
+  style: string # Communication style
+  identity: string # Agent identity
+  focus: string # Primary focus
+  core_principles: # Array of principles
     - string
     - string
 
-commands:                # Array of available commands
+commands: # Array of available commands
   - string
   - string
 
-dependencies:            # Agent dependencies
+dependencies: # Agent dependencies
   tasks: string[]
   templates: string[]
   checklists: string[]
@@ -141,8 +141,8 @@ const pmAgents = await executor.executeTool({
   id: 'find-pm',
   name: 'glob_pattern',
   input: {
-    pattern: '/.bmad-core/agents/pm*.md'
-  }
+    pattern: '/.bmad-core/agents/pm*.md',
+  },
 });
 
 // Find all QA agents
@@ -150,8 +150,8 @@ const qaAgents = await executor.executeTool({
   id: 'find-qa',
   name: 'glob_pattern',
   input: {
-    pattern: '/.bmad-core/agents/*qa*.md'
-  }
+    pattern: '/.bmad-core/agents/*qa*.md',
+  },
 });
 ```
 
@@ -162,7 +162,7 @@ async function buildAgentCatalog(executor: FallbackToolExecutor) {
   const globResult = await executor.executeTool({
     id: 'glob',
     name: 'glob_pattern',
-    input: { pattern: '/.bmad-core/agents/*.md' }
+    input: { pattern: '/.bmad-core/agents/*.md' },
   });
 
   const agentPaths = globResult.content!.split('\n').filter(Boolean);
@@ -172,7 +172,7 @@ async function buildAgentCatalog(executor: FallbackToolExecutor) {
       const readResult = await executor.executeTool({
         id: `read-${path}`,
         name: 'read_file',
-        input: { file_path: path }
+        input: { file_path: path },
       });
 
       if (!readResult.success) return null;
@@ -185,7 +185,7 @@ async function buildAgentCatalog(executor: FallbackToolExecutor) {
         icon: data.agent?.icon,
         whenToUse: data.agent?.whenToUse,
         commands: data.commands || [],
-        role: data.persona?.role
+        role: data.persona?.role,
       };
     })
   );
@@ -200,9 +200,7 @@ async function buildAgentCatalog(executor: FallbackToolExecutor) {
 async function searchAgentsByRole(executor: FallbackToolExecutor, role: string) {
   const catalog = await buildAgentCatalog(executor);
 
-  return catalog.filter((agent) =>
-    agent.role.toLowerCase().includes(role.toLowerCase())
-  );
+  return catalog.filter((agent) => agent.role.toLowerCase().includes(role.toLowerCase()));
 }
 
 // Usage:
@@ -240,11 +238,12 @@ The **bmad-orchestrator** agent uses this VFS-based approach in its `*help` comm
 ## In Orchestrator Agent Definition:
 
 commands:
-  - help: List available agents using VFS tools
 
-## In *help Command Implementation:
+- help: List available agents using VFS tools
 
-1. Execute glob_pattern("/.bmad-core/agents/*.md")
+## In \*help Command Implementation:
+
+1. Execute glob_pattern("/.bmad-core/agents/\*.md")
 2. For each agent file:
    - Read with read_file(path)
    - Parse metadata with gray-matter
@@ -266,7 +265,7 @@ it('should discover agents using glob_pattern', async () => {
   const result = await executor.executeTool({
     id: 'test',
     name: 'glob_pattern',
-    input: { pattern: '/.bmad-core/agents/*.md' }
+    input: { pattern: '/.bmad-core/agents/*.md' },
   });
 
   expect(result.success).toBe(true);
@@ -279,7 +278,7 @@ it('should extract agent metadata', async () => {
   const globResult = await executor.executeTool({
     id: 'glob',
     name: 'glob_pattern',
-    input: { pattern: '/.bmad-core/agents/pm.md' }
+    input: { pattern: '/.bmad-core/agents/pm.md' },
   });
 
   const path = globResult.content!.trim();
@@ -287,7 +286,7 @@ it('should extract agent metadata', async () => {
   const readResult = await executor.executeTool({
     id: 'read',
     name: 'read_file',
-    input: { file_path: path }
+    input: { file_path: path },
   });
 
   const { data } = matter(readResult.content!);
@@ -374,10 +373,11 @@ For many agents, provide search functionality:
 function filterAgents(catalog: AgentMetadata[], query: string) {
   const lowerQuery = query.toLowerCase();
 
-  return catalog.filter((agent) =>
-    agent.title.toLowerCase().includes(lowerQuery) ||
-    agent.id.toLowerCase().includes(lowerQuery) ||
-    agent.whenToUse.toLowerCase().includes(lowerQuery)
+  return catalog.filter(
+    (agent) =>
+      agent.title.toLowerCase().includes(lowerQuery) ||
+      agent.id.toLowerCase().includes(lowerQuery) ||
+      agent.whenToUse.toLowerCase().includes(lowerQuery)
   );
 }
 ```
@@ -389,11 +389,13 @@ function filterAgents(catalog: AgentMetadata[], query: string) {
 ### VFS Tools
 
 **glob_pattern**
+
 - **Input:** `{ pattern: string }`
 - **Output:** Newline-separated list of matching file paths
 - **Use:** Discover agents matching pattern
 
 **read_file**
+
 - **Input:** `{ file_path: string }`
 - **Output:** File content as string
 - **Use:** Load agent markdown content
@@ -415,18 +417,21 @@ const { data, content } = matter(markdownString);
 If you were using a traditional registry, migration is simple:
 
 **Before (Registry):**
+
 ```typescript
 const agents = registry.list();
 const agent = registry.get('pm');
 ```
 
 **After (VFS):**
+
 ```typescript
 const agents = await buildAgentCatalog(executor);
-const agent = agents.find(a => a.id === 'pm');
+const agent = agents.find((a) => a.id === 'pm');
 ```
 
 **Benefits:**
+
 - Includes expansion pack agents automatically
 - No manual registration required
 - More flexible filtering
@@ -444,5 +449,6 @@ const agent = agents.find(a => a.id === 'pm');
 - ✅ Integrates with orchestrator agent's `*help` command
 
 For complete working examples, see:
+
 - `packages/examples/list-agents.ts`
 - `packages/core/src/__tests__/agent-discovery.test.ts`

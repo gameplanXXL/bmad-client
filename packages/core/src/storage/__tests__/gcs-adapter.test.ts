@@ -150,9 +150,7 @@ describe('GoogleCloudStorageAdapter', () => {
 
       expect(result.success).toBe(true);
       expect(result.path).toBe(mockDocument.path);
-      expect(result.url).toBe(
-        'https://storage.googleapis.com/test-bucket//docs/test.md'
-      );
+      expect(result.url).toBe('https://storage.googleapis.com/test-bucket//docs/test.md');
       expect(result.metadata?.sessionId).toBe(mockMetadata.sessionId);
       expect(result.metadata?.size).toBe(mockDocument.content.length);
       expect(result.metadata?.mimeType).toBe('text/markdown');
@@ -280,9 +278,9 @@ describe('GoogleCloudStorageAdapter', () => {
       const results = await storage.saveBatch(docs, mockMetadata);
 
       expect(results).toHaveLength(3);
-      expect(results[0].success).toBe(true);
-      expect(results[1].success).toBe(false);
-      expect(results[2].success).toBe(true);
+      expect(results[0]!.success).toBe(true);
+      expect(results[1]!.success).toBe(false);
+      expect(results[2]!.success).toBe(true);
     });
 
     it('should handle empty array', async () => {
@@ -310,9 +308,7 @@ describe('GoogleCloudStorageAdapter', () => {
     it('should throw StorageNotFoundError if file does not exist', async () => {
       mockFile.exists.mockResolvedValueOnce([false]);
 
-      await expect(storage.load('/docs/missing.md')).rejects.toThrow(
-        StorageNotFoundError
-      );
+      await expect(storage.load('/docs/missing.md')).rejects.toThrow(StorageNotFoundError);
     });
 
     it('should handle prefix in path', async () => {
@@ -490,9 +486,7 @@ describe('GoogleCloudStorageAdapter', () => {
       const result = await storage.list({ sessionId: 'sess_1' });
 
       expect(result.documents).toHaveLength(2);
-      expect(result.documents.every((d) => d.metadata.sessionId === 'sess_1')).toBe(
-        true
-      );
+      expect(result.documents.every((d) => d.metadata.sessionId === 'sess_1')).toBe(true);
     });
 
     it('should apply pagination', async () => {
@@ -513,7 +507,7 @@ describe('GoogleCloudStorageAdapter', () => {
     it('should include document metadata', async () => {
       const result = await storage.list();
 
-      const doc = result.documents[0];
+      const doc = result.documents[0]!;
       expect(doc.path).toBeDefined();
       expect(doc.metadata.sessionId).toBeDefined();
       expect(doc.metadata.agentId).toBeDefined();
@@ -583,7 +577,7 @@ describe('GoogleCloudStorageAdapter', () => {
       await storageWithPrefix.initialize();
       const result = await storageWithPrefix.list();
 
-      expect(result.documents[0].path).toBe('doc1.md');
+      expect(result.documents[0]!.path).toBe('doc1.md');
     });
   });
 
@@ -606,9 +600,7 @@ describe('GoogleCloudStorageAdapter', () => {
     it('should throw StorageNotFoundError if file does not exist', async () => {
       mockFile.exists.mockResolvedValueOnce([false]);
 
-      await expect(storage.getMetadata('/missing.md')).rejects.toThrow(
-        StorageNotFoundError
-      );
+      await expect(storage.getMetadata('/missing.md')).rejects.toThrow(StorageNotFoundError);
     });
 
     it('should throw StorageError on metadata fetch failure', async () => {
@@ -655,17 +647,15 @@ describe('GoogleCloudStorageAdapter', () => {
       const metadata = await storage.getMetadata('/test.md');
 
       expect(metadata.tags).toBeDefined();
-      expect(metadata.tags?.customTag1).toBe('value1');
-      expect(metadata.tags?.customTag2).toBe('value2');
+      expect(metadata.tags!['customTag1']).toBe('value1');
+      expect(metadata.tags!['customTag2']).toBe('value2');
     });
   });
 
   describe('getUrl', () => {
     beforeEach(async () => {
       await storage.initialize();
-      mockFile.getSignedUrl.mockResolvedValue([
-        'https://storage.googleapis.com/signed-url',
-      ]);
+      mockFile.getSignedUrl.mockResolvedValue(['https://storage.googleapis.com/signed-url']);
     });
 
     it('should generate signed URL with default expiration', async () => {

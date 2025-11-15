@@ -114,10 +114,7 @@ export class TemplateLoader {
    * @param registry - Template registry
    * @returns Total number of templates loaded
    */
-  async loadFromMultiplePaths(
-    searchPaths: string[],
-    registry: TemplateRegistry
-  ): Promise<number> {
+  async loadFromMultiplePaths(searchPaths: string[], registry: TemplateRegistry): Promise<number> {
     let totalLoaded = 0;
 
     for (const searchPath of searchPaths) {

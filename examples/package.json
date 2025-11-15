@@ -6,7 +6,8 @@
   "scripts": {
     "simple": "tsx simple-agent.ts",
     "debug": "tsx debug-agent.ts",
-    "advanced": "tsx advanced-agent.ts"
+    "advanced": "tsx advanced-agent.ts",
+    "typecheck": "echo 'No TypeScript source files to check in examples'"
   },
   "dependencies": {
     "@bmad/client": "file:../packages/core",

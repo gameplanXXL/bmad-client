@@ -1,45 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BmadClient } from '../client.js';
-import { BmadSession } from '../session.js';
-import { AgentLoader } from '../agent-loader.js';
 import { MockLLMProvider } from './mock-llm-provider.js';
-import type { AgentDefinition } from '../types.js';
-
-// Mock agent definition for testing
-const mockAgentDefinition: AgentDefinition = {
-  agent: {
-    name: 'Test Agent',
-    id: 'test-agent',
-    title: 'Integration Test Agent',
-    icon: '🧪',
-    whenToUse: 'For integration testing',
-    customization: 'Full integration test agent',
-  },
-  persona: {
-    role: 'Test Assistant',
-    style: 'Concise and test-focused',
-    identity: 'An integration test agent',
-    focus: 'Testing all components together',
-    core_principles: [
-      'Test thoroughly',
-      'Verify integration points',
-      'Ensure components work together',
-    ],
-  },
-  commands: ['*test', '*help'],
-  dependencies: {
-    tasks: [],
-    templates: [],
-    checklists: [],
-    data: [],
-  },
-  activation_instructions: [
-    'You are running as an integration test agent',
-    'All components (promptGenerator, agentLoader, provider, toolExecutor) are active',
-    'Test the full tool call loop',
-    'You have access to read_file, write_file, edit_file, list_files, bash_command',
-  ],
-};
+import Anthropic from '@anthropic-ai/sdk';
 
 // Don't mock AgentLoader - we'll use the real one with fixtures
 
@@ -106,7 +68,7 @@ describe('Integration Tests', () => {
     expect(result.costs.apiCalls).toBe(1);
     expect(result.costs.currency).toBe('USD');
     expect(result.costs.breakdown).toHaveLength(1);
-    expect(result.costs.breakdown[0].model).toBe('mock-llm-v1');
+    expect(result.costs.breakdown[0]?.model).toBe('mock-llm-v1');
 
     // Verify documents (should be empty for this test since no tools were called)
     expect(result.documents).toBeDefined();
@@ -181,8 +143,8 @@ describe('Integration Tests', () => {
 
     // Verify tool was executed and document was created
     expect(result.documents).toHaveLength(1);
-    expect(result.documents[0].path).toBe('/test.md');
-    expect(result.documents[0].content).toContain('# Test Document');
+    expect(result.documents[0]?.path).toBe('/test.md');
+    expect(result.documents[0]?.content).toContain('# Test Document');
   });
 
   it.skip('should handle session failure gracefully', async () => {

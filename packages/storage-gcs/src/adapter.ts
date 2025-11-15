@@ -15,6 +15,8 @@ import type {
   StorageResult,
   StorageQueryOptions,
   StorageListResult,
+  SessionListResult,
+  SessionState,
 } from '@bmad/client';
 
 export interface GCSAdapterConfig {
@@ -440,6 +442,225 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
   async close(): Promise<void> {
     // GCS Storage client doesn't require explicit cleanup
     // Connection pooling is handled automatically
+  }
+
+  /**
+   * Save session state to storage
+   *
+   * Saves the complete session state as JSON for recovery and persistence.
+   * State is stored at: /sessions/{sessionId}/state.json
+   *
+   * @param state - Session state to save
+   * @returns Storage result with URL
+   */
+  async saveSessionState(state: SessionState): Promise<StorageResult> {
+    const path = `/sessions/${state.id}/state.json`;
+    const fullPath = this.getFullPath(path);
+    const file = this.bucket.file(fullPath);
+
+    try {
+      const content = JSON.stringify(state, null, 2);
+
+      await file.save(content, {
+        contentType: 'application/json',
+        metadata: {
+          metadata: {
+            sessionId: state.id,
+            agentId: state.agentId,
+            command: state.command,
+            status: state.status,
+            timestamp: state.createdAt.toString(),
+            completedAt: state.completedAt?.toString() || '',
+          },
+        },
+      });
+
+      return {
+        success: true,
+        path,
+        metadata: {
+          sessionId: state.id,
+          agentId: state.agentId,
+          command: state.command,
+          timestamp: state.createdAt,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        path,
+        error: `Failed to save session state: ${(error as Error).message}`,
+      };
+    }
+  }
+
+  /**
+   * Load session state from storage
+   *
+   * @param sessionId - Session ID to load
+   * @returns Session state
+   * @throws GCSStorageError if session state doesn't exist
+   */
+  async loadSessionState(sessionId: string): Promise<SessionState> {
+    const path = `/sessions/${sessionId}/state.json`;
+    const fullPath = this.getFullPath(path);
+    const file = this.bucket.file(fullPath);
+
+    try {
+      const [exists] = await file.exists();
+      if (!exists) {
+        throw new GCSStorageError(`Session state not found: ${sessionId}`, 'NOT_FOUND');
+      }
+
+      const [content] = await file.download();
+      const state = JSON.parse(content.toString('utf-8')) as SessionState;
+
+      return state;
+    } catch (error) {
+      if (error instanceof GCSStorageError) {
+        throw error;
+      }
+      throw new GCSStorageError(
+        `Failed to load session state ${sessionId}: ${(error as Error).message}`,
+        'LOAD_ERROR',
+        error as Error
+      );
+    }
+  }
+
+  /**
+   * List all saved sessions
+   *
+   * @param options - Query options (filter by agentId, date range, etc.)
+   * @returns List of session states with metadata
+   */
+  async listSessions(options?: StorageQueryOptions): Promise<SessionListResult> {
+    try {
+      const prefix = this.basePath ? `${this.basePath}/sessions/` : 'sessions/';
+
+      const queryOptions: any = {
+        prefix,
+        delimiter: '/',
+      };
+
+      if (options?.limit) {
+        queryOptions.maxResults = options.limit;
+      }
+
+      const [files] = await this.bucket.getFiles(queryOptions);
+
+      // Filter to only state.json files
+      const stateFiles = files.filter((file) => file.name.endsWith('state.json'));
+
+      // Load all session states
+      const sessionStates = await Promise.all(
+        stateFiles.map(async (file) => {
+          try {
+            const [content] = await file.download();
+            const state = JSON.parse(content.toString('utf-8')) as SessionState;
+
+            return state;
+          } catch (error) {
+            // Skip files that fail to parse
+            return null;
+          }
+        })
+      );
+
+      // Filter out null values and apply filters
+      let validSessions = sessionStates.filter((s): s is SessionState => s !== null);
+
+      if (options?.agentId) {
+        validSessions = validSessions.filter((s) => s.agentId === options.agentId);
+      }
+
+      if (options?.sessionId) {
+        validSessions = validSessions.filter((s) => s.id === options.sessionId);
+      }
+
+      if (options?.startDate) {
+        const startTime = options.startDate.getTime();
+        validSessions = validSessions.filter((s) => s.createdAt >= startTime);
+      }
+
+      if (options?.endDate) {
+        const endTime = options.endDate.getTime();
+        validSessions = validSessions.filter((s) => s.createdAt <= endTime);
+      }
+
+      // Count documents for each session
+      const sessions = await Promise.all(
+        validSessions.map(async (state) => {
+          // Count documents in session directory
+          const sessionPrefix = this.basePath
+            ? `${this.basePath}/sessions/${state.id}/`
+            : `sessions/${state.id}/`;
+
+          const [sessionFiles] = await this.bucket.getFiles({
+            prefix: sessionPrefix,
+          });
+
+          // Exclude state.json from document count
+          const documentCount = sessionFiles.filter((f) => !f.name.endsWith('state.json')).length;
+
+          return {
+            sessionId: state.id,
+            agentId: state.agentId,
+            command: state.command,
+            status: state.status,
+            createdAt: state.createdAt,
+            completedAt: state.completedAt,
+            documentCount,
+            totalCost: state.totalCost,
+          };
+        })
+      );
+
+      return {
+        sessions,
+        total: sessions.length,
+        hasMore: false,
+      };
+    } catch (error) {
+      throw new GCSStorageError(
+        `Failed to list sessions: ${(error as Error).message}`,
+        'LIST_ERROR',
+        error as Error
+      );
+    }
+  }
+
+  /**
+   * Delete session state and all associated documents
+   *
+   * @param sessionId - Session ID to delete
+   * @returns true if deleted, false if not found
+   */
+  async deleteSession(sessionId: string): Promise<boolean> {
+    try {
+      const sessionPrefix = this.basePath
+        ? `${this.basePath}/sessions/${sessionId}/`
+        : `sessions/${sessionId}/`;
+
+      const [files] = await this.bucket.getFiles({
+        prefix: sessionPrefix,
+      });
+
+      if (files.length === 0) {
+        return false; // Session not found
+      }
+
+      // Delete all files in session directory
+      await Promise.all(files.map((file) => file.delete()));
+
+      return true;
+    } catch (error) {
+      throw new GCSStorageError(
+        `Failed to delete session ${sessionId}: ${(error as Error).message}`,
+        'DELETE_ERROR',
+        error as Error
+      );
+    }
   }
 
   /**

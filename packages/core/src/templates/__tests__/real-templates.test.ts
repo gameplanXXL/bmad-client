@@ -20,10 +20,10 @@ describe('Real Template Parsing', () => {
       expect(template.template.output.filename).toBe('docs/prd.md');
 
       expect(template.workflow?.mode).toBe('interactive');
-      expect(template.sections.length).toBeGreaterThan(0);
+      expect(template.sections!.length).toBeGreaterThan(0);
 
       // Check for key sections
-      const sectionIds = template.sections.map(s => s.id);
+      const sectionIds = template.sections!.map((s) => s.id);
       expect(sectionIds).toContain('requirements');
       expect(sectionIds).toContain('epic-list');
 
@@ -47,7 +47,7 @@ describe('Real Template Parsing', () => {
 
       expect(template.template.name).toContain('Architecture');
       expect(template.template.output.format).toBe('markdown');
-      expect(template.sections.length).toBeGreaterThan(0);
+      expect(template.sections!.length).toBeGreaterThan(0);
 
       console.log('✓ Architecture Template parsed successfully');
     } catch (error) {
@@ -67,7 +67,7 @@ describe('Real Template Parsing', () => {
       const template = parseTemplate(content);
 
       expect(template.template.name).toContain('Story');
-      expect(template.sections.length).toBeGreaterThan(0);
+      expect(template.sections!.length).toBeGreaterThan(0);
 
       console.log('✓ Story Template parsed successfully');
     } catch (error) {
@@ -83,7 +83,7 @@ describe('Real Template Parsing', () => {
     try {
       const { readdir } = await import('fs/promises');
       const files = await readdir(templatePath);
-      const yamlFiles = files.filter(f => f.endsWith('.yaml'));
+      const yamlFiles = files.filter((f) => f.endsWith('.yaml'));
 
       console.log(`\nFound ${yamlFiles.length} template files:`);
 
@@ -103,8 +103,8 @@ describe('Real Template Parsing', () => {
         })
       );
 
-      const successful = results.filter(r => r.status === 'fulfilled');
-      const failed = results.filter(r => r.status === 'rejected');
+      const successful = results.filter((r) => r.status === 'fulfilled');
+      const failed = results.filter((r) => r.status === 'rejected');
 
       console.log(`\nResults: ${successful.length} passed, ${failed.length} failed`);
 

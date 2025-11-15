@@ -5,8 +5,8 @@ import {
   hasElicitation,
   extractSectionIds,
   getTemplateSummary,
-  TemplateValidationError,
 } from '../parser.js';
+import { TemplateValidationError } from '../schema.js';
 
 describe('Template Parser', () => {
   describe('parseTemplate', () => {
@@ -32,7 +32,7 @@ sections:
       expect(template.template.version).toBe(1.0); // YAML parses as number
       expect(template.template.output.format).toBe('markdown');
       expect(template.sections).toHaveLength(1);
-      expect(template.sections[0].id).toBe('intro');
+      expect(template.sections![0]!.id).toBe('intro');
     });
 
     it('should parse template with workflow', () => {
@@ -85,10 +85,10 @@ sections:
 
       const template = parseTemplate(yaml);
 
-      expect(template.sections[0].sections).toHaveLength(2);
-      expect(template.sections[0].sections![0].id).toBe('child1');
-      expect(template.sections[0].sections![1].sections).toHaveLength(1);
-      expect(template.sections[0].sections![1].sections![0].id).toBe('grandchild');
+      expect(template.sections![0]!.sections).toHaveLength(2);
+      expect(template.sections![0]!.sections![0]!.id).toBe('child1');
+      expect(template.sections![0]!.sections![1]!.sections).toHaveLength(1);
+      expect(template.sections![0]!.sections![1]!.sections![0]!.id).toBe('grandchild');
     });
 
     it('should parse template with elicitation flags', () => {
@@ -113,9 +113,9 @@ sections:
 
       const template = parseTemplate(yaml);
 
-      expect(template.sections[0].elicit).toBe(true);
-      expect(template.sections[0].instruction).toBe('Ask user for input');
-      expect(template.sections[1].elicit).toBe(false);
+      expect(template.sections![0]!.elicit).toBe(true);
+      expect(template.sections![0]!.instruction).toBe('Ask user for input');
+      expect(template.sections![1]!.elicit).toBe(false);
     });
 
     it('should parse template with repeatable sections', () => {
@@ -141,9 +141,9 @@ sections:
 
       const template = parseTemplate(yaml);
 
-      expect(template.sections[0].repeatable).toBe(true);
-      expect(template.sections[0].template).toContain('{{epic_number}}');
-      expect(template.sections[0].sections![0].repeatable).toBe(true);
+      expect(template.sections![0]!.repeatable).toBe(true);
+      expect(template.sections![0]!.template).toContain('{{epic_number}}');
+      expect(template.sections![0]!.sections![0]!.repeatable).toBe(true);
     });
 
     it('should parse template with section types', () => {
@@ -175,12 +175,12 @@ sections:
 
       const template = parseTemplate(yaml);
 
-      expect(template.sections[0].type).toBe('paragraphs');
-      expect(template.sections[1].type).toBe('bullet-list');
-      expect(template.sections[2].type).toBe('numbered-list');
-      expect(template.sections[2].prefix).toBe('FR');
-      expect(template.sections[3].type).toBe('table');
-      expect(template.sections[3].columns).toEqual(['Name', 'Description', 'Status']);
+      expect(template.sections![0]!.type).toBe('paragraphs');
+      expect(template.sections![1]!.type).toBe('bullet-list');
+      expect(template.sections![2]!.type).toBe('numbered-list');
+      expect(template.sections![2]!.prefix).toBe('FR');
+      expect(template.sections![3]!.type).toBe('table');
+      expect(template.sections![3]!.columns).toEqual(['Name', 'Description', 'Status']);
     });
 
     it('should parse template with choices and examples', () => {
@@ -206,12 +206,12 @@ sections:
 
       const template = parseTemplate(yaml);
 
-      expect(template.sections[0].choices).toEqual({
+      expect(template.sections![0]!.choices).toEqual({
         platform: ['Web', 'Mobile', 'Desktop'],
         framework: ['React', 'Vue', 'Angular'],
       });
-      expect(template.sections[0].examples).toHaveLength(2);
-      expect(template.sections[0].examples![0]).toContain('React');
+      expect(template.sections![0]!.examples).toHaveLength(2);
+      expect(template.sections![0]!.examples![0]).toContain('React');
     });
 
     it('should parse template with conditions', () => {
@@ -237,9 +237,9 @@ sections:
 
       const template = parseTemplate(yaml);
 
-      expect(template.sections[0].condition).toBeUndefined();
-      expect(template.sections[1].condition).toBe('Has UI requirements');
-      expect(template.sections[2].condition).toBe("project_type == 'backend'");
+      expect(template.sections![0]!.condition).toBeUndefined();
+      expect(template.sections![1]!.condition).toBe('Has UI requirements');
+      expect(template.sections![2]!.condition).toBe("project_type == 'backend'");
     });
 
     it('should throw error for empty template', () => {

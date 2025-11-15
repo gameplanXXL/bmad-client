@@ -6,7 +6,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   CommandExecutor,
   CommandNotAllowedError,
-  CommandTimeoutError,
   CONTENT_CREATION_WHITELIST,
 } from '../command-executor.js';
 import { tmpdir } from 'os';
@@ -83,9 +82,7 @@ describe('CommandExecutor', () => {
 
   describe('Whitelist Validation', () => {
     it('should reject non-whitelisted commands', async () => {
-      await expect(
-        executor.execute('rm', ['-rf', '/'])
-      ).rejects.toThrow(CommandNotAllowedError);
+      await expect(executor.execute('rm', ['-rf', '/'])).rejects.toThrow(CommandNotAllowedError);
     });
 
     it('should reject non-whitelisted commands with helpful message', async () => {
@@ -364,9 +361,7 @@ describe('CommandExecutor', () => {
 
   describe('Security', () => {
     it('should not allow shell injection via command', async () => {
-      await expect(
-        executor.execute('echo; rm -rf /', [])
-      ).rejects.toThrow(CommandNotAllowedError);
+      await expect(executor.execute('echo; rm -rf /', [])).rejects.toThrow(CommandNotAllowedError);
     });
 
     it('should not use shell by default', async () => {
@@ -382,9 +377,7 @@ describe('CommandExecutor', () => {
     });
 
     it('should not allow path traversal in whitelist', async () => {
-      await expect(
-        executor.execute('../../../bin/rm', [])
-      ).rejects.toThrow(CommandNotAllowedError);
+      await expect(executor.execute('../../../bin/rm', [])).rejects.toThrow(CommandNotAllowedError);
     });
   });
 

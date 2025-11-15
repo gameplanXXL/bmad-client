@@ -91,7 +91,9 @@ export class ConversationalSession extends EventEmitter {
 
     // Initialize VFS if context has initial files
     if (this.options.context?.['initialFiles']) {
-      this.toolExecutor.initializeFiles(this.options.context['initialFiles'] as Record<string, string>);
+      this.toolExecutor.initializeFiles(
+        this.options.context['initialFiles'] as Record<string, string>
+      );
     }
 
     this.client.getLogger().debug('Conversational session created', {
@@ -197,7 +199,9 @@ export class ConversationalSession extends EventEmitter {
 
       try {
         const agent = await this.agentLoader.loadAgent(agentPath);
-        this.client.getLogger().info(`Agent loaded successfully: ${this.agentId} from ${agentPath}`);
+        this.client
+          .getLogger()
+          .info(`Agent loaded successfully: ${this.agentId} from ${agentPath}`);
         return agent;
       } catch (error) {
         // Log the specific error for debugging
@@ -329,8 +333,8 @@ export class ConversationalSession extends EventEmitter {
             toolCallsCount: response.message.toolCalls?.length || 0,
             contentIsArray: Array.isArray(response.message.content),
             contentBlocks: Array.isArray(response.message.content)
-              ? response.message.content.map(c => ({ type: c.type }))
-              : 'string'
+              ? response.message.content.map((c) => ({ type: c.type }))
+              : 'string',
           });
 
           // Execute tools
@@ -344,8 +348,9 @@ export class ConversationalSession extends EventEmitter {
 
           this.client.getLogger().debug('[MESSAGES] Added assistant message with tool_use:', {
             messageIndex: this.messages.length - 1,
-            hasToolUse: Array.isArray(response.message.content) &&
-              response.message.content.some(c => c.type === 'tool_use'),
+            hasToolUse:
+              Array.isArray(response.message.content) &&
+              response.message.content.some((c) => c.type === 'tool_use'),
           });
 
           // Execute tools and add results
@@ -389,9 +394,7 @@ export class ConversationalSession extends EventEmitter {
           // After answer, continue processing
           continueLoop = true;
         }
-
       }
-
 
       // Turn completed successfully
       const turn: ConversationTurn = {
@@ -668,7 +671,9 @@ export class ConversationalSession extends EventEmitter {
     // Emit warning at 80% BEFORE throwing error
     const warningThreshold = this.options.costLimit * 0.8;
     if (currentCost >= warningThreshold && currentCost < this.options.costLimit) {
-      this.client.getLogger().warn('Cost limit warning', { currentCost, limit: this.options.costLimit });
+      this.client
+        .getLogger()
+        .warn('Cost limit warning', { currentCost, limit: this.options.costLimit });
       this.emit('cost-warning', currentCost);
     }
 

@@ -33,13 +33,13 @@ import { BmadClient } from '@bmad/client';
 
 // Initialize client
 const client = new BmadClient({
-  provider: {
-    type: 'anthropic',
-    apiKey: process.env.ANTHROPIC_API_KEY,
-  },
-  storage: {
-    type: 'memory', // or 'gcs' for production
-  },
+provider: {
+type: 'anthropic',
+apiKey: process.env.ANTHROPIC_API_KEY,
+},
+storage: {
+type: 'memory', // or 'gcs' for production
+},
 });
 
 // Start an agent session
@@ -47,8 +47,8 @@ const session = await client.startAgent('pm', 'create-prd');
 
 // Handle questions during execution
 session.on('question', async ({ question }) => {
-  const answer = await promptUser(question);
-  session.answer(answer);
+const answer = await promptUser(question);
+session.answer(answer);
 });
 
 // Execute and get results
@@ -59,8 +59,8 @@ console.log(\`Cost: $\${result.costs.totalCost.toFixed(4)}\`);
 
 // Access generated documents
 result.documents.forEach((doc) => {
-  console.log(\`\${doc.path}:\`);
-  console.log(doc.content);
+console.log(\`\${doc.path}:\`);
+console.log(doc.content);
 });
 \`\`\`
 
@@ -71,7 +71,7 @@ result.documents.forEach((doc) => {
 BMad agents are specialized AI personas that execute specific workflows:
 
 - **PM** (Product Manager) - Create PRDs, define requirements
-- **Architect** - Design system architecture  
+- **Architect** - Design system architecture
 - **Developer** - Implement features
 - **QA** - Design test strategies
 - **UX Expert** - Design user experiences
@@ -96,13 +96,13 @@ const result = await session.execute();
 
 \`\`\`typescript
 const client = new BmadClient({
-  provider: { type: 'anthropic', apiKey: process.env.ANTHROPIC_API_KEY },
-  costLimit: 1.00, // $1.00 limit
+provider: { type: 'anthropic', apiKey: process.env.ANTHROPIC_API_KEY },
+costLimit: 1.00, // $1.00 limit
 });
 
 // Track costs in real-time
 session.on('costs', (costs) => {
-  console.log(\`Current cost: $\${costs.totalCost.toFixed(4)}\`);
+console.log(\`Current cost: $\${costs.totalCost.toFixed(4)}\`);
 });
 \`\`\`
 
@@ -161,6 +161,7 @@ console.log(diagnostics);
 ### Expansion Pack Agents
 
 With the Expert Author expansion pack:
+
 - **book-strategist** - Book strategy and planning
 - **learning-architect** - Learning pathway design
 - **book-author** - Book content creation

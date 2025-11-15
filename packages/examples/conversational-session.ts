@@ -155,7 +155,9 @@ async function main() {
   console.log(`Turns: ${result.turns.length}`);
   console.log(`Duration: ${(result.duration / 1000).toFixed(2)}s`);
   console.log(`Total Cost: $${result.totalCost.toFixed(4)}`);
-  console.log(`Total Tokens: ${result.totalTokens.input} input, ${result.totalTokens.output} output`);
+  console.log(
+    `Total Tokens: ${result.totalTokens.input} input, ${result.totalTokens.output} output`
+  );
   console.log(`\nDocuments created: ${result.documents.length}`);
 
   result.documents.forEach((doc) => {

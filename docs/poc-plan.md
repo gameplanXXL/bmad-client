@@ -9,6 +9,7 @@
 **Timeline:** 4-6 weeks for PoC
 
 **Success Criteria:**
+
 - ✅ SDK can load and execute one BMAD agent (PM or book-author)
 - ✅ Agent can use tools (read, write files)
 - ✅ Simple script can interact with agent
@@ -21,11 +22,13 @@
 ## Phase 1: Minimal SDK Core (Week 1-2)
 
 ### Goal
+
 Prove that we can execute a BMAD agent through the SDK with Claude API.
 
 ### Deliverables
 
 #### 1.1 Project Setup
+
 ```bash
 bmad-client/
 ├── packages/
@@ -43,6 +46,7 @@ bmad-client/
 ```
 
 **Tasks:**
+
 - [ ] Initialize pnpm workspace
 - [ ] Setup TypeScript with strict mode
 - [ ] Configure Vitest for testing
@@ -64,6 +68,7 @@ export class SystemPromptGenerator {
 ```
 
 **Test:**
+
 ```typescript
 describe('SystemPromptGenerator', () => {
   it('generates valid system prompt from agent definition', () => {
@@ -75,6 +80,7 @@ describe('SystemPromptGenerator', () => {
 ```
 
 **Tasks:**
+
 - [ ] Implement base Claude Code prompt
 - [ ] Add tool descriptions
 - [ ] Inject agent persona
@@ -95,6 +101,7 @@ export class AgentLoader {
 ```
 
 **Test:**
+
 ```typescript
 describe('AgentLoader', () => {
   it('loads agent from markdown file', async () => {
@@ -105,6 +112,7 @@ describe('AgentLoader', () => {
 ```
 
 **Tasks:**
+
 - [ ] Parse markdown files with gray-matter
 - [ ] Validate schema with Zod
 - [ ] Handle parse errors gracefully
@@ -118,16 +126,14 @@ describe('AgentLoader', () => {
 
 ```typescript
 export class AnthropicProvider {
-  async sendMessage(
-    messages: Message[],
-    tools: Tool[]
-  ): Promise<ProviderResponse> {
+  async sendMessage(messages: Message[], tools: Tool[]): Promise<ProviderResponse> {
     // Call Anthropic API
   }
 }
 ```
 
 **Test:**
+
 ```typescript
 describe('AnthropicProvider', () => {
   it('sends message with tools to Claude API', async () => {
@@ -139,6 +145,7 @@ describe('AnthropicProvider', () => {
 ```
 
 **Tasks:**
+
 - [ ] Install @anthropic-ai/sdk
 - [ ] Implement sendMessage
 - [ ] Handle tool calls in response
@@ -161,6 +168,7 @@ export class FallbackToolExecutor {
 ```
 
 **Tasks:**
+
 - [ ] Implement read_file
 - [ ] Implement write_file
 - [ ] Implement edit_file
@@ -182,6 +190,7 @@ export class BmadSession extends EventEmitter {
 ```
 
 **Test:**
+
 ```typescript
 describe('BmadSession', () => {
   it('executes tool call loop', async () => {
@@ -193,6 +202,7 @@ describe('BmadSession', () => {
 ```
 
 **Tasks:**
+
 - [ ] Implement tool call loop
 - [ ] Handle tool responses
 - [ ] Basic error handling
@@ -217,6 +227,7 @@ export class BmadClient {
 ```
 
 **Test:**
+
 ```typescript
 describe('BmadClient', () => {
   it('creates session for agent', async () => {
@@ -228,6 +239,7 @@ describe('BmadClient', () => {
 ```
 
 **Tasks:**
+
 - [ ] Implement constructor
 - [ ] Implement startAgent
 - [ ] Load agents from directory
@@ -240,6 +252,7 @@ describe('BmadClient', () => {
 ## Phase 2: Example Application (Week 3)
 
 ### Goal
+
 Prove SDK works in real application with simple scripts and chat.
 
 ### Deliverables
@@ -254,8 +267,8 @@ import { BmadClient } from '@bmad/client';
 const client = new BmadClient({
   provider: {
     type: 'anthropic',
-    apiKey: process.env.ANTHROPIC_API_KEY!
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY!,
+  },
 });
 
 async function main() {
@@ -277,6 +290,7 @@ main().catch(console.error);
 ```
 
 **Tasks:**
+
 - [ ] Create example directory
 - [ ] Write simple script
 - [ ] Test with real Anthropic API
@@ -294,15 +308,15 @@ import * as readline from 'readline';
 
 const rl = readline.createInterface({
   input: process.stdin,
-  output: process.stdout
+  output: process.stdout,
 });
 
 async function main() {
   const client = new BmadClient({
     provider: {
       type: 'anthropic',
-      apiKey: process.env.ANTHROPIC_API_KEY!
-    }
+      apiKey: process.env.ANTHROPIC_API_KEY!,
+    },
   });
 
   console.log('BMad Client PoC - Interactive Mode');
@@ -335,6 +349,7 @@ main().catch(console.error);
 ```
 
 **Tasks:**
+
 - [ ] Implement readline interface
 - [ ] Handle questions interactively
 - [ ] Display results nicely
@@ -358,6 +373,7 @@ web-chat/
 ```
 
 **Server:**
+
 ```typescript
 import express from 'express';
 import { Server } from 'socket.io';
@@ -370,8 +386,8 @@ const io = new Server(server);
 const client = new BmadClient({
   provider: {
     type: 'anthropic',
-    apiKey: process.env.ANTHROPIC_API_KEY!
-  }
+    apiKey: process.env.ANTHROPIC_API_KEY!,
+  },
 });
 
 io.on('connection', (socket) => {
@@ -400,21 +416,22 @@ server.listen(3000);
 ```
 
 **Client:**
+
 ```html
 <!DOCTYPE html>
 <html>
-<head>
-  <title>BMad Chat PoC</title>
-  <script src="/socket.io/socket.io.js"></script>
-</head>
-<body>
-  <div id="chat">
-    <div id="messages"></div>
-    <input id="input" placeholder="Type your answer...">
-  </div>
+  <head>
+    <title>BMad Chat PoC</title>
+    <script src="/socket.io/socket.io.js"></script>
+  </head>
+  <body>
+    <div id="chat">
+      <div id="messages"></div>
+      <input id="input" placeholder="Type your answer..." />
+    </div>
 
-  <script src="chat.js"></script>
-</body>
+    <script src="chat.js"></script>
+  </body>
 </html>
 ```
 
@@ -425,7 +442,7 @@ const socket = io();
 // Start agent on page load
 socket.emit('start-agent', {
   agentId: 'pm',
-  command: '*help'
+  command: '*help',
 });
 
 socket.on('question', (q) => {
@@ -447,6 +464,7 @@ document.getElementById('input').addEventListener('keypress', (e) => {
 ```
 
 **Tasks:**
+
 - [ ] Setup Express + Socket.io
 - [ ] Create simple HTML interface
 - [ ] Connect SDK to websockets
@@ -460,6 +478,7 @@ document.getElementById('input').addEventListener('keypress', (e) => {
 ## Phase 3: Essential Features (Week 4)
 
 ### Goal
+
 Add critical features to make PoC production-like.
 
 ### Deliverables
@@ -476,6 +495,7 @@ export class CostTracker {
 ```
 
 **Tasks:**
+
 - [ ] Track input/output tokens
 - [ ] Calculate costs per model
 - [ ] Generate cost reports
@@ -486,6 +506,7 @@ export class CostTracker {
 #### 3.2 Pause/Resume
 
 **Tasks:**
+
 - [ ] Detect questions in LLM responses
 - [ ] Pause session execution
 - [ ] Emit question event
@@ -497,6 +518,7 @@ export class CostTracker {
 #### 3.3 Error Handling
 
 **Tasks:**
+
 - [ ] Create error hierarchy
 - [ ] Handle API errors
 - [ ] Handle tool execution errors
@@ -508,6 +530,7 @@ export class CostTracker {
 #### 3.4 Logging
 
 **Tasks:**
+
 - [ ] Create logger interface
 - [ ] Add debug logging throughout
 - [ ] Test log output
@@ -519,6 +542,7 @@ export class CostTracker {
 ## Phase 4: Documentation & Polish (Week 5-6)
 
 ### Goal
+
 Make PoC presentable and understandable.
 
 ### Deliverables
@@ -526,6 +550,7 @@ Make PoC presentable and understandable.
 #### 4.1 Documentation
 
 **Files:**
+
 - `README.md` - Overview, quick start
 - `docs/getting-started.md` - Detailed setup
 - `docs/api-reference.md` - API docs
@@ -555,6 +580,7 @@ Make PoC presentable and understandable.
 ## Testing Strategy for PoC
 
 ### Unit Tests
+
 ```typescript
 // Test individual components
 describe('SystemPromptGenerator', () => { ... });
@@ -565,6 +591,7 @@ describe('FallbackToolExecutor', () => { ... });
 **Target:** 80% coverage
 
 ### Integration Tests
+
 ```typescript
 // Test component interactions
 describe('Session with Mocked Provider', () => {
@@ -578,6 +605,7 @@ describe('Session with Mocked Provider', () => {
 **Target:** Critical paths covered
 
 ### E2E Tests
+
 ```typescript
 // Test with real Anthropic API (limited)
 describe('E2E: PM Agent', () => {
@@ -591,6 +619,7 @@ describe('E2E: PM Agent', () => {
 **Target:** 1 test per agent
 
 ### Manual Testing
+
 - [ ] Run simple-script example
 - [ ] Run interactive-cli example
 - [ ] Run web-chat example (if built)
@@ -602,7 +631,8 @@ describe('E2E: PM Agent', () => {
 ## Success Criteria
 
 ### Must Have (PoC Valid)
-- ✅ SDK can execute PM agent *help command
+
+- ✅ SDK can execute PM agent \*help command
 - ✅ Agent uses tools (read/write VFS)
 - ✅ Simple script example works
 - ✅ Cost tracking reports accurate costs
@@ -610,6 +640,7 @@ describe('E2E: PM Agent', () => {
 - ✅ Documentation exists
 
 ### Nice to Have
+
 - ✅ Interactive CLI works smoothly
 - ✅ Web chat interface functional
 - ✅ Multiple agents work (PM, architect)
@@ -617,6 +648,7 @@ describe('E2E: PM Agent', () => {
 - ✅ Tests have 80%+ coverage
 
 ### Out of Scope for PoC
+
 - ❌ Real filesystem access (VFS only)
 - ❌ GCS storage (in-memory only)
 - ❌ Multiple provider support (Anthropic only)
@@ -629,15 +661,19 @@ describe('E2E: PM Agent', () => {
 ## Risk Mitigation
 
 ### Risk 1: Agent prompts don't work outside Claude Code
+
 **Mitigation:** Start with simple agent, test early, iterate on system prompt
 
 ### Risk 2: Tool execution too complex
+
 **Mitigation:** Use VFS-only approach, no external filesystem access in PoC
 
 ### Risk 3: API costs too high during testing
+
 **Mitigation:** Use mocked provider for most tests, real API only for E2E
 
 ### Risk 4: Time overrun
+
 **Mitigation:** Prioritize ruthlessly, skip web chat if needed
 
 ---
@@ -647,6 +683,7 @@ describe('E2E: PM Agent', () => {
 ### Immediate Actions (Day 1)
 
 1. **Setup Repository**
+
    ```bash
    mkdir bmad-client
    cd bmad-client
@@ -655,12 +692,14 @@ describe('E2E: PM Agent', () => {
    ```
 
 2. **Install Dependencies**
+
    ```bash
    pnpm add -D typescript vitest @types/node
    pnpm add @anthropic-ai/sdk zod gray-matter eventemitter3
    ```
 
 3. **Create Basic Structure**
+
    ```bash
    touch packages/core/src/index.ts
    touch packages/core/src/client.ts
@@ -670,6 +709,7 @@ describe('E2E: PM Agent', () => {
    ```
 
 4. **First Test**
+
    ```typescript
    // packages/core/src/__tests__/client.test.ts
    import { describe, it, expect } from 'vitest';
@@ -678,7 +718,7 @@ describe('E2E: PM Agent', () => {
    describe('BmadClient', () => {
      it('initializes', () => {
        const client = new BmadClient({
-         provider: { type: 'anthropic', apiKey: 'test' }
+         provider: { type: 'anthropic', apiKey: 'test' },
        });
        expect(client).toBeDefined();
      });
@@ -691,6 +731,7 @@ describe('E2E: PM Agent', () => {
    ```
 
 ### Week 1 Focus
+
 - Complete Phase 1.1-1.4 (Setup, Prompt Generator, Agent Loader, Provider)
 - Get first real API call working
 - Validate system prompt generates correctly
@@ -700,6 +741,7 @@ describe('E2E: PM Agent', () => {
 ## Budget Estimate
 
 ### Development Time
+
 - Week 1-2: SDK Core (80 hours)
 - Week 3: Examples (40 hours)
 - Week 4: Features (40 hours)
@@ -707,6 +749,7 @@ describe('E2E: PM Agent', () => {
 - **Total:** 200 hours (~1.5 FTE for 6 weeks)
 
 ### API Costs (Testing)
+
 - Unit tests: $0 (mocked)
 - Integration tests: ~$5 (100 test runs)
 - E2E tests: ~$10 (20 full agent runs)
@@ -714,6 +757,7 @@ describe('E2E: PM Agent', () => {
 - **Total:** ~$65
 
 ### Infrastructure
+
 - GitHub repo: Free
 - Vercel hosting (optional): Free tier
 - **Total:** $0
@@ -723,18 +767,21 @@ describe('E2E: PM Agent', () => {
 ## Deliverables Summary
 
 ### Code
+
 - ✅ `@bmad/client` package (core SDK)
 - ✅ `examples/simple-script` - Basic usage
 - ✅ `examples/interactive-cli` - Interactive mode
 - ✅ `examples/web-chat` - Web interface (optional)
 
 ### Documentation
+
 - ✅ `README.md` - Project overview
 - ✅ `docs/getting-started.md` - Setup guide
 - ✅ `docs/architecture.md` - Architecture (updated)
 - ✅ `docs/poc-plan.md` - This document
 
 ### Artifacts
+
 - ✅ Demo video/GIF
 - ✅ Test suite with 80%+ coverage
 - ✅ Working examples

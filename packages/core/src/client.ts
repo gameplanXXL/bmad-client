@@ -40,10 +40,7 @@ export class BmadClient extends EventEmitter {
    * Initialize client (templates + storage)
    */
   private async initialize(): Promise<void> {
-    await Promise.all([
-      this.loadTemplates(),
-      this.initializeStorage(),
-    ]);
+    await Promise.all([this.loadTemplates(), this.initializeStorage()]);
   }
 
   /**
@@ -270,7 +267,9 @@ export class BmadClient extends EventEmitter {
    * });
    * ```
    */
-  async listSessions(options?: import('./storage/types.js').StorageQueryOptions): Promise<import('./storage/types.js').SessionListResult> {
+  async listSessions(
+    options?: import('./storage/types.js').StorageQueryOptions
+  ): Promise<import('./storage/types.js').SessionListResult> {
     if (!this.storage) {
       throw new Error('Storage not configured - cannot list sessions');
     }
@@ -449,9 +448,7 @@ export class BmadClient extends EventEmitter {
     };
   }> {
     // Get provider type
-    const providerType = 'type' in this.config.provider
-      ? this.config.provider.type
-      : 'custom';
+    const providerType = 'type' in this.config.provider ? this.config.provider.type : 'custom';
 
     // Get storage info
     let storageInfo: { type: string; initialized: boolean; sessionCount?: number } | undefined;
@@ -477,10 +474,10 @@ export class BmadClient extends EventEmitter {
     const allTemplates = this.templateRegistry.list();
     const templates = {
       count: allTemplates.length,
-      templates: allTemplates.map(t => ({
+      templates: allTemplates.map((t) => ({
         id: t.template.id,
         name: t.template.name,
-        sectionCount: t.sections.length,
+        sectionCount: t.sections?.length ?? 0,
       })),
     };
 

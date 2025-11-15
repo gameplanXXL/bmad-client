@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BmadClient } from '../../client.js';
 import { AgentLoader } from '../../agent-loader.js';
-import { getMockAgentDefinitions, createMockAnthropicResponse } from '../../__tests__/test-helpers.js';
+import {
+  getMockAgentDefinitions,
+  createMockAnthropicResponse,
+} from '../../__tests__/test-helpers.js';
 import { MockLLMProvider } from '../../__tests__/mock-llm-provider.js';
 
 /**
@@ -15,6 +18,7 @@ describe('invoke_agent Integration Tests', () => {
   let client: BmadClient;
   let mockAgents: ReturnType<typeof getMockAgentDefinitions>;
   let mockProvider: MockLLMProvider;
+  const mockAnthropicResponses: any[] = []; // For skipped tests that use old API
 
   beforeEach(() => {
     mockAgents = getMockAgentDefinitions();
@@ -24,10 +28,10 @@ describe('invoke_agent Integration Tests', () => {
       const agentId = path.includes('bmad-orchestrator')
         ? 'bmad-orchestrator'
         : path.includes('/pm.md')
-        ? 'pm'
-        : path.includes('/architect.md')
-        ? 'architect'
-        : 'unknown';
+          ? 'pm'
+          : path.includes('/architect.md')
+            ? 'architect'
+            : 'unknown';
 
       const agent = mockAgents[agentId];
       if (!agent) {
@@ -137,7 +141,7 @@ describe('invoke_agent Integration Tests', () => {
     // Verify child session was created
     expect(result.costs.childSessions).toBeDefined();
     expect(result.costs.childSessions).toHaveLength(1);
-    expect(result.costs.childSessions![0].agent).toBe('pm');
+    expect(result.costs.childSessions?.[0]?.agent).toBe('pm');
 
     // Verify document was created
     expect(result.documents).toEqual(
@@ -150,7 +154,7 @@ describe('invoke_agent Integration Tests', () => {
     );
 
     // Verify cost aggregation
-    const childCost = result.costs.childSessions![0].totalCost;
+    const childCost = result.costs.childSessions?.[0]?.totalCost ?? 0;
     expect(result.costs.totalCost).toBeGreaterThanOrEqual(childCost);
   });
 
@@ -242,8 +246,8 @@ describe('invoke_agent Integration Tests', () => {
 
     // Verify both child sessions
     expect(result.costs.childSessions).toHaveLength(2);
-    expect(result.costs.childSessions![0].agent).toBe('pm');
-    expect(result.costs.childSessions![1].agent).toBe('architect');
+    expect(result.costs.childSessions![0]!.agent).toBe('pm');
+    expect(result.costs.childSessions![1]!.agent).toBe('architect');
 
     // Verify both documents (may include duplicates from merging)
     expect(result.documents.length).toBeGreaterThanOrEqual(2);
@@ -368,8 +372,8 @@ describe('invoke_agent Integration Tests', () => {
     expect(result.costs.outputTokens).toBe(900);
 
     // Verify child session tokens
-    expect(result.costs.childSessions![0].inputTokens).toBe(2200);
-    expect(result.costs.childSessions![0].outputTokens).toBe(600);
+    expect(result.costs.childSessions![0]!.inputTokens).toBe(2200);
+    expect(result.costs.childSessions![0]!.outputTokens).toBe(600);
 
     // Verify cost calculation (Sonnet 4: $3/MTok input, $15/MTok output)
     const expectedCost = (3700 / 1000) * 0.003 + (900 / 1000) * 0.015;
@@ -518,7 +522,7 @@ describe('invoke_agent Integration Tests', () => {
 
     // Verify PM was invoked
     expect(result.costs.childSessions).toBeDefined();
-    expect(result.costs.childSessions![0].agent).toBe('pm');
+    expect(result.costs.childSessions![0]!.agent).toBe('pm');
 
     // Context passing verified via successful execution
     // (If context wasn't passed, child session setup would fail)

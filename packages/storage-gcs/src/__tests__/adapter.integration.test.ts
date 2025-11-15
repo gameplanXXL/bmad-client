@@ -174,7 +174,10 @@ describe.skipIf(SKIP_INTEGRATION)('GoogleCloudStorageAdapter Integration', () =>
     afterEach(async () => {
       // Cleanup
       const result = await adapter.list();
-      const testDocs = result.documents.filter((doc) => doc.metadata.sessionId === testSessionId || doc.metadata.sessionId === 'other-session');
+      const testDocs = result.documents.filter(
+        (doc) =>
+          doc.metadata.sessionId === testSessionId || doc.metadata.sessionId === 'other-session'
+      );
       await Promise.all(testDocs.map((doc) => adapter.delete(doc.path)));
     });
 

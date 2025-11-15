@@ -63,9 +63,21 @@ sections:
   describe('loadFromDirectory', () => {
     it('should load all YAML files from directory', async () => {
       // Create multiple template files
-      await writeFile(join(testDir, 'template1.yaml'), validTemplateYaml.replace('test-template', 'template1'), 'utf-8');
-      await writeFile(join(testDir, 'template2.yaml'), validTemplateYaml.replace('test-template', 'template2'), 'utf-8');
-      await writeFile(join(testDir, 'template3.yml'), validTemplateYaml.replace('test-template', 'template3'), 'utf-8');
+      await writeFile(
+        join(testDir, 'template1.yaml'),
+        validTemplateYaml.replace('test-template', 'template1'),
+        'utf-8'
+      );
+      await writeFile(
+        join(testDir, 'template2.yaml'),
+        validTemplateYaml.replace('test-template', 'template2'),
+        'utf-8'
+      );
+      await writeFile(
+        join(testDir, 'template3.yml'),
+        validTemplateYaml.replace('test-template', 'template3'),
+        'utf-8'
+      );
 
       // Create non-YAML files (should be ignored)
       await writeFile(join(testDir, 'readme.md'), '# README', 'utf-8');
@@ -74,7 +86,11 @@ sections:
       const templates = await loader.loadFromDirectory(testDir);
 
       expect(templates).toHaveLength(3);
-      expect(templates.map(t => t.template.id).sort()).toEqual(['template1', 'template2', 'template3']);
+      expect(templates.map((t) => t.template.id).sort()).toEqual([
+        'template1',
+        'template2',
+        'template3',
+      ]);
     });
 
     it('should return empty array for non-existent directory', async () => {
@@ -86,13 +102,17 @@ sections:
     it('should skip invalid templates and continue loading', async () => {
       await writeFile(join(testDir, 'valid.yaml'), validTemplateYaml, 'utf-8');
       await writeFile(join(testDir, 'invalid.yaml'), 'invalid yaml content', 'utf-8');
-      await writeFile(join(testDir, 'valid2.yaml'), validTemplateYaml.replace('test-template', 'template2'), 'utf-8');
+      await writeFile(
+        join(testDir, 'valid2.yaml'),
+        validTemplateYaml.replace('test-template', 'template2'),
+        'utf-8'
+      );
 
       const templates = await loader.loadFromDirectory(testDir);
 
       // Should load 2 valid templates, skipping the invalid one
       expect(templates).toHaveLength(2);
-      expect(templates.map(t => t.template.id).sort()).toEqual(['template2', 'test-template']);
+      expect(templates.map((t) => t.template.id).sort()).toEqual(['template2', 'test-template']);
     });
 
     it('should return empty array for empty directory', async () => {
@@ -104,8 +124,16 @@ sections:
 
   describe('loadAndRegister', () => {
     it('should load templates and register them', async () => {
-      await writeFile(join(testDir, 'template1.yaml'), validTemplateYaml.replace('test-template', 'template1'), 'utf-8');
-      await writeFile(join(testDir, 'template2.yaml'), validTemplateYaml.replace('test-template', 'template2'), 'utf-8');
+      await writeFile(
+        join(testDir, 'template1.yaml'),
+        validTemplateYaml.replace('test-template', 'template1'),
+        'utf-8'
+      );
+      await writeFile(
+        join(testDir, 'template2.yaml'),
+        validTemplateYaml.replace('test-template', 'template2'),
+        'utf-8'
+      );
 
       const count = await loader.loadAndRegister(testDir, registry);
 
@@ -139,8 +167,16 @@ sections:
       registry.register(template);
 
       // Try to load a duplicate
-      await writeFile(join(testDir, 'duplicate.yaml'), validTemplateYaml.replace('test-template', 'duplicate'), 'utf-8');
-      await writeFile(join(testDir, 'new.yaml'), validTemplateYaml.replace('test-template', 'new'), 'utf-8');
+      await writeFile(
+        join(testDir, 'duplicate.yaml'),
+        validTemplateYaml.replace('test-template', 'duplicate'),
+        'utf-8'
+      );
+      await writeFile(
+        join(testDir, 'new.yaml'),
+        validTemplateYaml.replace('test-template', 'new'),
+        'utf-8'
+      );
 
       const count = await loader.loadAndRegister(testDir, registry);
 
@@ -159,8 +195,16 @@ sections:
       await mkdir(dir1, { recursive: true });
       await mkdir(dir2, { recursive: true });
 
-      await writeFile(join(dir1, 'template1.yaml'), validTemplateYaml.replace('test-template', 'template1'), 'utf-8');
-      await writeFile(join(dir2, 'template2.yaml'), validTemplateYaml.replace('test-template', 'template2'), 'utf-8');
+      await writeFile(
+        join(dir1, 'template1.yaml'),
+        validTemplateYaml.replace('test-template', 'template1'),
+        'utf-8'
+      );
+      await writeFile(
+        join(dir2, 'template2.yaml'),
+        validTemplateYaml.replace('test-template', 'template2'),
+        'utf-8'
+      );
 
       const count = await loader.loadFromMultiplePaths([dir1, dir2], registry);
 
@@ -173,7 +217,11 @@ sections:
     it('should continue loading if one path fails', async () => {
       const dir1 = join(testDir, 'dir1');
       await mkdir(dir1, { recursive: true });
-      await writeFile(join(dir1, 'template1.yaml'), validTemplateYaml.replace('test-template', 'template1'), 'utf-8');
+      await writeFile(
+        join(dir1, 'template1.yaml'),
+        validTemplateYaml.replace('test-template', 'template1'),
+        'utf-8'
+      );
 
       const count = await loader.loadFromMultiplePaths(
         [dir1, join(testDir, 'non-existent'), dir1],
@@ -225,11 +273,7 @@ sections:
       const regularDir = join(testDir, 'regular-dir');
       await mkdir(join(regularDir, 'templates'), { recursive: true });
 
-      await writeFile(
-        join(regularDir, 'templates', 'template.yaml'),
-        validTemplateYaml,
-        'utf-8'
-      );
+      await writeFile(join(regularDir, 'templates', 'template.yaml'), validTemplateYaml, 'utf-8');
 
       const count = await loader.loadFromExpansionPacks([testDir], registry);
 

@@ -9,7 +9,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { BmadClient } from '../client.js';
 import { BmadSession } from '../session.js';
 import { MockLLMProvider } from './mock-llm-provider.js';
-import type { SessionState } from '../types.js';
 
 describe('Session State Persistence', () => {
   let client: BmadClient;
@@ -30,7 +29,7 @@ describe('Session State Persistence', () => {
 
       mockProvider.setResponses([
         {
-          text: 'Creating PRD...',
+          content: 'Creating PRD...',
           toolCalls: [
             {
               id: 'call-1',
@@ -40,7 +39,7 @@ describe('Session State Persistence', () => {
           ],
         },
         {
-          text: 'PRD created successfully.',
+          content: 'PRD created successfully.',
           toolCalls: [],
         },
       ]);
@@ -96,7 +95,7 @@ describe('Session State Persistence', () => {
 
       mockProvider.setResponses([
         {
-          text: 'I need more information.',
+          content: 'I need more information.',
           toolCalls: [
             {
               id: 'call-1',
@@ -109,7 +108,7 @@ describe('Session State Persistence', () => {
           ],
         },
         {
-          text: 'Thank you for the answer.',
+          content: 'Thank you for the answer.',
           toolCalls: [],
         },
       ]);
@@ -142,7 +141,7 @@ describe('Session State Persistence', () => {
 
       mockProvider.setResponses([
         {
-          text: 'Working on it...',
+          content: 'Working on it...',
           toolCalls: [],
         },
       ]);
@@ -153,7 +152,7 @@ describe('Session State Persistence', () => {
 
       // Should have system prompt + assistant response
       expect(state.messages.length).toBeGreaterThanOrEqual(2);
-      expect(state.messages[0].role).toBe('system');
+      expect(state.messages[0]?.role).toBe('system');
       expect(state.messages.some((m) => m.role === 'assistant')).toBe(true);
     });
 
@@ -162,11 +161,11 @@ describe('Session State Persistence', () => {
 
       mockProvider.setResponses([
         {
-          text: 'First response',
+          content: 'First response',
           toolCalls: [],
         },
         {
-          text: 'Second response',
+          content: 'Second response',
           toolCalls: [],
         },
       ]);
@@ -192,7 +191,7 @@ describe('Session State Persistence', () => {
 
       mockProvider.setResponses([
         {
-          text: 'Done',
+          content: 'Done',
           toolCalls: [],
         },
       ]);
@@ -216,7 +215,7 @@ describe('Session State Persistence', () => {
 
       mockProvider.setResponses([
         {
-          text: 'Creating PRD...',
+          content: 'Creating PRD...',
           toolCalls: [
             {
               id: 'call-1',
@@ -226,7 +225,7 @@ describe('Session State Persistence', () => {
           ],
         },
         {
-          text: 'Done',
+          content: 'Done',
           toolCalls: [],
         },
       ]);
@@ -243,7 +242,7 @@ describe('Session State Persistence', () => {
       expect(restoredSession.id).toBe(originalSession.id);
       expect(restoredSession.agentId).toBe(originalSession.agentId);
       expect(restoredSession.command).toBe(originalSession.command);
-      expect(restoredSession.status).toBe(originalSession.status);
+      expect(restoredSession.getStatus()).toBe(originalSession.getStatus());
     });
 
     it('should restore VFS files', async () => {
@@ -272,7 +271,7 @@ describe('Session State Persistence', () => {
 
       mockProvider.setResponses([
         {
-          text: 'Need info',
+          content: 'Need info',
           toolCalls: [
             {
               id: 'call-1',
@@ -285,7 +284,7 @@ describe('Session State Persistence', () => {
           ],
         },
         {
-          text: 'Got it, continuing...',
+          content: 'Got it, continuing...',
           toolCalls: [],
         },
       ]);
@@ -320,7 +319,7 @@ describe('Session State Persistence', () => {
 
       mockProvider.setResponses([
         {
-          text: 'Response',
+          content: 'Response',
           toolCalls: [],
         },
       ]);
@@ -345,7 +344,7 @@ describe('Session State Persistence', () => {
 
       mockProvider.setResponses([
         {
-          text: 'First message',
+          content: 'First message',
           toolCalls: [],
         },
       ]);
@@ -355,8 +354,9 @@ describe('Session State Persistence', () => {
       const state = originalSession.serialize();
       const restoredSession = await BmadSession.deserialize(client, state);
 
-      // Messages should be identical
-      expect(restoredSession.messages).toEqual(originalSession.messages);
+      // Messages should be identical - using serialize to access
+      const restoredState = restoredSession.serialize();
+      expect(restoredState.messages).toEqual(state.messages);
     });
 
     it('should restore session options', async () => {
@@ -368,7 +368,7 @@ describe('Session State Persistence', () => {
 
       mockProvider.setResponses([
         {
-          text: 'Done',
+          content: 'Done',
           toolCalls: [],
         },
       ]);
@@ -392,7 +392,7 @@ describe('Session State Persistence', () => {
 
       mockProvider.setResponses([
         {
-          text: 'Creating documents...',
+          content: 'Creating documents...',
           toolCalls: [
             {
               id: 'call-1',
@@ -402,7 +402,7 @@ describe('Session State Persistence', () => {
           ],
         },
         {
-          text: 'Complete',
+          content: 'Complete',
           toolCalls: [],
         },
       ]);
@@ -438,7 +438,7 @@ describe('Session State Persistence', () => {
 
       mockProvider.setResponses([
         {
-          text: 'Just thinking...',
+          content: 'Just thinking...',
           toolCalls: [],
         },
       ]);
@@ -461,7 +461,7 @@ describe('Session State Persistence', () => {
       expect(state.messages).toEqual([]);
 
       const restored = await BmadSession.deserialize(client, state);
-      expect(restored.messages).toEqual([]);
+      expect((restored as any).messages).toEqual([]);
     });
 
     it('should handle session with child session costs', async () => {
@@ -469,7 +469,7 @@ describe('Session State Persistence', () => {
 
       mockProvider.setResponses([
         {
-          text: 'Done',
+          content: 'Done',
           toolCalls: [],
         },
       ]);
@@ -490,7 +490,7 @@ describe('Session State Persistence', () => {
 
       const state = session.serialize();
       expect(state.childSessionCosts).toHaveLength(1);
-      expect(state.childSessionCosts[0].agent).toBe('architect');
+      expect(state?.childSessionCosts[0]?.agent).toBe('architect');
 
       const restored = await BmadSession.deserialize(client, state);
       expect((restored as any).childSessionCosts).toEqual(state.childSessionCosts);
@@ -501,7 +501,7 @@ describe('Session State Persistence', () => {
 
       mockProvider.setResponses([
         {
-          text: 'Done',
+          content: 'Done',
           toolCalls: [],
         },
       ]);

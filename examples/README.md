@@ -10,6 +10,7 @@ This directory contains example applications demonstrating how to use the BMad C
 ## Setup
 
 1. Install dependencies from the project root:
+
    ```bash
    cd ..
    npm install
@@ -18,6 +19,7 @@ This directory contains example applications demonstrating how to use the BMad C
 2. Configure your API key:
 
    **Option A: Using .env file (Recommended)**
+
    ```bash
    # Copy the example file
    cp .env.example .env
@@ -27,6 +29,7 @@ This directory contains example applications demonstrating how to use the BMad C
    ```
 
    **Option B: Environment variable**
+
    ```bash
    export ANTHROPIC_API_KEY="your-api-key-here"
    ```
@@ -42,6 +45,7 @@ npm run simple
 ```
 
 **What it does:**
+
 - Initializes BmadClient with Anthropic provider
 - Starts the PM (Product Manager) agent
 - Executes the `*help` command
@@ -52,6 +56,7 @@ npm run simple
 ### 2. Advanced Agent with Options
 
 More advanced example showing:
+
 - Custom session options
 - Cost limits
 - Context initialization
@@ -76,7 +81,9 @@ Configure these in your `.env` file:
 ## Understanding the Output
 
 ### Cost Report
+
 The SDK tracks token usage and calculates costs in real-time:
+
 ```
 💰 Cost Report:
    Total Cost: $0.0082 USD
@@ -86,7 +93,9 @@ The SDK tracks token usage and calculates costs in real-time:
 ```
 
 ### Documents Created
+
 Any files created by the agent using tools are returned as documents:
+
 ```
 📄 Documents Created: 1
    1. /docs/prd.md
@@ -96,16 +105,21 @@ Any files created by the agent using tools are returned as documents:
 ## Troubleshooting
 
 ### "ANTHROPIC_API_KEY environment variable not set"
+
 Set your API key:
+
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
 ### "Agent not found: pm"
+
 Make sure you're running from the examples directory and the `.bmad-core/agents/` directory exists in the project root.
 
 ### Import errors
+
 Make sure you've built the packages:
+
 ```bash
 cd ..
 npm run build

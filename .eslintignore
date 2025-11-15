@@ -1,0 +1,15 @@
+# Build artifacts
+**/dist/
+**/build/
+
+# Dependencies
+node_modules/
+
+# Test coverage
+coverage/
+.vitest/
+
+# Lock files
+*.lock
+package-lock.json
+pnpm-lock.yaml

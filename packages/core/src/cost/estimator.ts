@@ -98,16 +98,12 @@ export class CostEstimator {
 
     // Keep only last 100 entries per agent/command
     const key = `${usage.agentId}:${usage.command}`;
-    const entries = this.historicalData.filter(
-      (h) => `${h.agentId}:${h.command}` === key
-    );
+    const entries = this.historicalData.filter((h) => `${h.agentId}:${h.command}` === key);
 
     if (entries.length > 100) {
       // Remove oldest entries
       const toRemove = entries.slice(0, entries.length - 100);
-      this.historicalData = this.historicalData.filter(
-        (h) => !toRemove.includes(h)
-      );
+      this.historicalData = this.historicalData.filter((h) => !toRemove.includes(h));
     }
 
     this.logger?.debug('Historical data added', {
@@ -223,9 +219,7 @@ export class CostEstimator {
    * Find historical data for agent/command combination
    */
   private findHistoricalData(agentId: string, command: string): HistoricalUsage[] {
-    return this.historicalData.filter(
-      (h) => h.agentId === agentId && h.command === command
-    );
+    return this.historicalData.filter((h) => h.agentId === agentId && h.command === command);
   }
 
   /**

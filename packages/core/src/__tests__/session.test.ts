@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BmadClient } from '../client.js';
-import { BmadSession } from '../session.js';
-import Anthropic from '@anthropic-ai/sdk';
 
 // Mock Anthropic SDK
 vi.mock('@anthropic-ai/sdk', () => {

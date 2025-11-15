@@ -108,8 +108,12 @@ async function main() {
     console.log('   Breakdown:');
     result.costs.breakdown.forEach((cost) => {
       console.log(`   - ${cost.model}:`);
-      console.log(`     Input: $${cost.inputCost.toFixed(4)} (${cost.inputTokens.toLocaleString()} tokens)`);
-      console.log(`     Output: $${cost.outputCost.toFixed(4)} (${cost.outputTokens.toLocaleString()} tokens)`);
+      console.log(
+        `     Input: $${cost.inputCost.toFixed(4)} (${cost.inputTokens.toLocaleString()} tokens)`
+      );
+      console.log(
+        `     Output: $${cost.outputCost.toFixed(4)} (${cost.outputTokens.toLocaleString()} tokens)`
+      );
     });
     console.log();
   }

@@ -109,7 +109,9 @@ export class DocumentGenerator {
     }
 
     // Process all sections
-    await this.processSections(this.template.sections, 0);
+    if (this.template.sections) {
+      await this.processSections(this.template.sections, 0);
+    }
 
     const document: GeneratedDocument = {
       content: this.content.join('\n'),
@@ -117,7 +119,7 @@ export class DocumentGenerator {
         templateId: this.template.template.id,
         templateName: this.template.template.name,
         generatedAt: Date.now(),
-        sectionCount: this.template.sections.length,
+        sectionCount: this.template.sections?.length ?? 0,
       },
       context: this.context,
     };

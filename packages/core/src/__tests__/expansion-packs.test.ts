@@ -60,9 +60,9 @@ dependencies:
     const packs = await loader.loadExpansionPacks([testDir]);
 
     expect(packs).toHaveLength(1);
-    expect(packs[0].name).toBe('test-pack');
-    expect(packs[0].agentCount).toBe(1);
-    expect(packs[0].agents[0].agent.id).toBe('test-agent');
+    expect(packs[0]?.name).toBe('test-pack');
+    expect(packs[0]?.agentCount).toBe(1);
+    expect(packs[0]?.agents[0]?.agent.id).toBe('test-agent');
   });
 
   it('should discover multiple expansion packs', async () => {
@@ -102,7 +102,7 @@ dependencies:
     const packs = await loader.loadExpansionPacks([testDir]);
 
     expect(packs).toHaveLength(2);
-    expect(packs.map(p => p.name).sort()).toEqual(['pack-one', 'pack-two']);
+    expect(packs.map((p) => p.name).sort()).toEqual(['pack-one', 'pack-two']);
   });
 
   it('should handle multiple agents in one expansion pack', async () => {
@@ -140,8 +140,8 @@ dependencies:
     const packs = await loader.loadExpansionPacks([testDir]);
 
     expect(packs).toHaveLength(1);
-    expect(packs[0].agentCount).toBe(3);
-    expect(packs[0].agents.map(a => a.agent.id).sort()).toEqual(['agent1', 'agent2', 'agent3']);
+    expect(packs[0]?.agentCount).toBe(3);
+    expect(packs[0]?.agents.map((a) => a.agent.id).sort()).toEqual(['agent1', 'agent2', 'agent3']);
   });
 
   it('should skip directories without agents subdirectory', async () => {
@@ -166,7 +166,7 @@ dependencies:
     const packs = await loader.loadExpansionPacks([testDir]);
 
     // Pack is found but has 0 agents (invalid one was skipped)
-    expect(packs.some(p => p.name === 'invalid')).toBe(false);
+    expect(packs.some((p) => p.name === 'invalid')).toBe(false);
   });
 
   it('should handle non-existent search paths gracefully', async () => {
@@ -208,13 +208,21 @@ dependencies:
 # Agent ${id}
 `;
 
-    await writeFile(join(dir1, '.bmad-pack1', 'agents', 'agent1.md'), agentContent('agent1'), 'utf-8');
-    await writeFile(join(dir2, '.bmad-pack2', 'agents', 'agent2.md'), agentContent('agent2'), 'utf-8');
+    await writeFile(
+      join(dir1, '.bmad-pack1', 'agents', 'agent1.md'),
+      agentContent('agent1'),
+      'utf-8'
+    );
+    await writeFile(
+      join(dir2, '.bmad-pack2', 'agents', 'agent2.md'),
+      agentContent('agent2'),
+      'utf-8'
+    );
 
     const packs = await loader.loadExpansionPacks([dir1, dir2]);
 
     expect(packs).toHaveLength(2);
-    expect(packs.map(p => p.name).sort()).toEqual(['pack1', 'pack2']);
+    expect(packs.map((p) => p.name).sort()).toEqual(['pack1', 'pack2']);
   });
 
   it('should ignore non-.bmad directories', async () => {

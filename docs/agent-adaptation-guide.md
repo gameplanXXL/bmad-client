@@ -37,33 +37,36 @@ The core difference: **Agent invocation mechanism changes from system prompt rep
 ### Technical Constraints
 
 **Anthropic Messages API Limitation:**
+
 ```typescript
 // ❌ NOT POSSIBLE in Anthropic API
 messages = [
   { role: 'system', content: 'You are Orchestrator' },
   { role: 'user', content: 'Do task' },
   { role: 'system', content: 'You are now PM' }, // INVALID - can't change system prompt mid-conversation
-]
+];
 ```
 
 **Claude Code Special Capability:**
+
 - Claude Code CLI can dynamically replace system prompts during tool execution
 - This enables the "transformation" pattern where Orchestrator becomes PM
 
 **SDK Reality:**
+
 - Anthropic API requires system prompt at conversation start only
 - Cannot be changed during the conversation
 - Solution: Start new child session with different agent
 
 ### Behavioral Implications
 
-| **Aspect** | **Claude Code** | **BMad Client SDK** |
-|------------|-----------------|---------------------|
-| **Identity** | Orchestrator becomes PM | Orchestrator invokes PM |
-| **Context** | Shared conversation memory | Explicit context passing |
-| **User Experience** | "I am now John the PM" | "I've asked John the PM to help" |
-| **Session Model** | Single session, persona swap | Parent-child session hierarchy |
-| **Cost Tracking** | Single session costs | Aggregated parent + child costs |
+| **Aspect**          | **Claude Code**              | **BMad Client SDK**              |
+| ------------------- | ---------------------------- | -------------------------------- |
+| **Identity**        | Orchestrator becomes PM      | Orchestrator invokes PM          |
+| **Context**         | Shared conversation memory   | Explicit context passing         |
+| **User Experience** | "I am now John the PM"       | "I've asked John the PM to help" |
+| **Session Model**   | Single session, persona swap | Parent-child session hierarchy   |
+| **Cost Tracking**   | Single session costs         | Aggregated parent + child costs  |
 
 ---
 
@@ -128,6 +131,7 @@ Processes PM result, presents to user
 **When to Apply:** Any agent that "transforms" into other agents
 
 #### Before (Claude Code):
+
 ```yaml
 core_principles:
   - Become any agent on demand
@@ -140,6 +144,7 @@ transformation:
 ```
 
 #### After (SDK):
+
 ```yaml
 core_principles:
   - Orchestrate specialized agents via invoke_agent tool
@@ -160,6 +165,7 @@ delegation:
 **When to Apply:** Any reference to SlashCommand or agent switching
 
 #### Before (Claude Code):
+
 ```yaml
 commands:
   agent: Transform into a specialized agent
@@ -170,6 +176,7 @@ activation-instructions:
 ```
 
 #### After (SDK):
+
 ```yaml
 commands:
   agent: Invoke a specialized agent to handle task
@@ -188,6 +195,7 @@ tool-usage:
 **When to Apply:** Any agent that acts as coordinator/orchestrator
 
 #### Before (Claude Code):
+
 ```yaml
 identity: Unified interface that dynamically transforms into any specialized agent
 
@@ -195,6 +203,7 @@ style: "I'm now John the PM, let me create your PRD..."
 ```
 
 #### After (SDK):
+
 ```yaml
 identity: Orchestration layer that delegates to specialized agents
 
@@ -208,19 +217,21 @@ style: "I've invoked John the PM to create your PRD. Let me show you what he pro
 **When to Apply:** All agents that invoke other agents
 
 #### Add New Section:
+
 ```yaml
 context-passing:
   - Extract relevant context from user conversation
   - Package context for sub-agent consumption
   - Include: project_type, requirements, constraints, user_preferences
   - Example:
-      context: {
-        project_type: "web app",
-        target_users: "developers",
-        key_features: ["API", "Auth"],
-        parent_session_id: "uuid",
-        previous_documents: ["/docs/prd.md"]
-      }
+      context:
+        {
+          project_type: 'web app',
+          target_users: 'developers',
+          key_features: ['API', 'Auth'],
+          parent_session_id: 'uuid',
+          previous_documents: ['/docs/prd.md'],
+        }
 
 result-aggregation:
   - Receive sub-agent result with documents and costs
@@ -375,6 +386,7 @@ Most **specialist agents** (PM, Architect, Dev, QA, etc.) require **minimal or n
 ### Required Changes: None for Most Agents
 
 ✅ **No changes needed for:**
+
 - pm (Product Manager)
 - po (Product Owner)
 - architect (Architect)
@@ -385,6 +397,7 @@ Most **specialist agents** (PM, Architect, Dev, QA, etc.) require **minimal or n
 - sm (Scrum Master)
 
 These agents already:
+
 - Work with VFS tools (read_file, write_file, etc.)
 - Execute commands independently
 - Generate documents
@@ -392,7 +405,7 @@ These agents already:
 
 ### Optional Enhancement: Sub-Agent Awareness
 
-You *can* add metadata to help specialist agents understand they're in a sub-session:
+You _can_ add metadata to help specialist agents understand they're in a sub-session:
 
 ```yaml
 # Optional addition to any specialist agent
@@ -451,6 +464,7 @@ If using expansion packs (e.g., Expert Author, Competency Assessor):
 ### Example 1: Orchestrator Invoking PM
 
 #### Claude Code (Old):
+
 ```markdown
 User: "I need a PRD for my web app"
 
@@ -465,6 +479,7 @@ PM (as Orchestrator): "Hi! I'm John, your Product Manager. Let's create your PRD
 ```
 
 #### BMad Client SDK (New):
+
 ```markdown
 User: "I need a PRD for my web app"
 
@@ -472,12 +487,12 @@ Orchestrator: "I'll invoke John, the Product Manager, to create your PRD."
 
 [Orchestrator uses invoke_agent tool]
 invoke_agent({
-  agent_id: "pm",
-  command: "create-prd",
-  context: {
-    project_type: "web application",
-    user_request: "I need a PRD for my web app"
-  }
+agent_id: "pm",
+command: "create-prd",
+context: {
+project_type: "web application",
+user_request: "I need a PRD for my web app"
+}
 })
 
 [Child session starts with PM agent]
@@ -488,18 +503,20 @@ invoke_agent({
 Orchestrator: "John has completed your PRD! Here's what he created:
 
 📄 Product Requirements Document (PRD)
-   Path: /docs/prd.md
-   Size: 15.4 KB
+Path: /docs/prd.md
+Size: 15.4 KB
 
-   Key Sections:
-   - Goals & Background (3 objectives defined)
-   - User Personas (2 primary personas)
-   - Functional Requirements (12 requirements)
-   - Technical Assumptions
+Key Sections:
 
-   Cost: $0.42 (8,500 input tokens, 6,200 output tokens)
+- Goals & Background (3 objectives defined)
+- User Personas (2 primary personas)
+- Functional Requirements (12 requirements)
+- Technical Assumptions
+
+Cost: $0.42 (8,500 input tokens, 6,200 output tokens)
 
 Would you like me to:
+
 1. Invoke the Architect to design the system
 2. Show you the full PRD content
 3. Have the PM refine any sections"
@@ -508,6 +525,7 @@ Would you like me to:
 ### Example 2: Multi-Agent Workflow
 
 #### Claude Code (Old):
+
 ```markdown
 User: "Set up a new project"
 
@@ -526,10 +544,12 @@ Architect: "Creating architecture..."
 ```
 
 #### BMad Client SDK (New):
+
 ```markdown
 User: "Set up a new project"
 
 Orchestrator: "I'll coordinate a multi-agent workflow:
+
 1. PM creates PRD
 2. Architect designs system
 3. Dev creates initial codebase
@@ -545,12 +565,12 @@ Now invoking Architect..."
 
 [Orchestrator invokes Architect]
 invoke_agent({
-  agent_id: "architect",
-  command: "create-architecture",
-  context: {
-    prd_path: "/docs/prd.md",
-    ...
-  }
+agent_id: "architect",
+command: "create-architecture",
+context: {
+prd_path: "/docs/prd.md",
+...
+}
 })
 
 Orchestrator: "✓ Architect completed architecture ($0.68)
@@ -559,30 +579,33 @@ Now invoking Developer..."
 
 [Orchestrator invokes Dev]
 invoke_agent({
-  agent_id: "dev",
-  command: "scaffold-project",
-  context: {
-    architecture_path: "/docs/architecture.md",
-    ...
-  }
+agent_id: "dev",
+command: "scaffold-project",
+context: {
+architecture_path: "/docs/architecture.md",
+...
+}
 })
 
 Orchestrator: "✓ Project setup complete!
 
 📊 Workflow Summary:
-   - PRD: /docs/prd.md (15.4 KB)
-   - Architecture: /docs/architecture.md (28.1 KB)
-   - Codebase: /src/* (45 files)
 
-   Total Cost: $1.87
-   - PM: $0.42
-   - Architect: $0.68
-   - Developer: $0.77
+- PRD: /docs/prd.md (15.4 KB)
+- Architecture: /docs/architecture.md (28.1 KB)
+- Codebase: /src/\* (45 files)
 
-   Next suggested steps:
-   1. Review architecture decisions
-   2. Set up CI/CD pipeline
-   3. Create test strategy with QA agent"
+Total Cost: $1.87
+
+- PM: $0.42
+- Architect: $0.68
+- Developer: $0.77
+
+Next suggested steps:
+
+1.  Review architecture decisions
+2.  Set up CI/CD pipeline
+3.  Create test strategy with QA agent"
 ```
 
 ---
@@ -592,14 +615,13 @@ Orchestrator: "✓ Project setup complete!
 ### Test Cases
 
 #### Test 1: Orchestrator Can Invoke PM
+
 ```typescript
 const client = new BmadClient(config);
 const session = await client.startAgent('bmad-orchestrator', 'invoke pm for prd');
 
 session.on('completed', (result) => {
-  expect(result.documents).toContainEqual(
-    expect.objectContaining({ path: '/docs/prd.md' })
-  );
+  expect(result.documents).toContainEqual(expect.objectContaining({ path: '/docs/prd.md' }));
   expect(result.costs.childSessions).toHaveLength(1);
   expect(result.costs.childSessions[0].agent).toBe('pm');
 });
@@ -608,6 +630,7 @@ await session.execute();
 ```
 
 #### Test 2: Multi-Agent Workflow
+
 ```typescript
 const session = await client.startAgent('bmad-orchestrator', 'full project setup');
 
@@ -616,9 +639,7 @@ session.on('completed', (result) => {
   expect(result.costs.childSessions).toHaveLength(3);
 
   // Should have generated multiple documents
-  expect(result.documents).toContainEqual(
-    expect.objectContaining({ path: '/docs/prd.md' })
-  );
+  expect(result.documents).toContainEqual(expect.objectContaining({ path: '/docs/prd.md' }));
   expect(result.documents).toContainEqual(
     expect.objectContaining({ path: '/docs/architecture.md' })
   );
@@ -628,6 +649,7 @@ await session.execute();
 ```
 
 #### Test 3: Cost Aggregation
+
 ```typescript
 const session = await client.startAgent('bmad-orchestrator', 'create prd and architecture');
 
@@ -636,10 +658,7 @@ const result = await session.execute();
 expect(result.costs.totalCost).toBeGreaterThan(0);
 expect(result.costs.childSessions).toBeDefined();
 
-const totalChildCost = result.costs.childSessions.reduce(
-  (sum, child) => sum + child.totalCost,
-  0
-);
+const totalChildCost = result.costs.childSessions.reduce((sum, child) => sum + child.totalCost, 0);
 
 expect(result.costs.totalCost).toBeGreaterThanOrEqual(totalChildCost);
 ```
@@ -674,6 +693,7 @@ expect(result.costs.totalCost).toBeGreaterThanOrEqual(totalChildCost);
 ---
 
 **Next Steps:**
+
 1. Implement `invoke_agent` tool in FallbackToolExecutor
 2. Update bmad-orchestrator.md with new delegation model
 3. Test orchestrator → pm → architecture workflow

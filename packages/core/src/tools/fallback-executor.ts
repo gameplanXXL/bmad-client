@@ -163,7 +163,8 @@ export class FallbackToolExecutor {
           properties: {
             pattern: {
               type: 'string',
-              description: 'Glob pattern to match files (e.g., "*.md", ".bmad-core/agents/*.md", "**/*.ts")',
+              description:
+                'Glob pattern to match files (e.g., "*.md", ".bmad-core/agents/*.md", "**/*.ts")',
             },
             path: {
               type: 'string',
@@ -233,7 +234,8 @@ The sub-agent will execute autonomously in its own session and return results in
             },
             command: {
               type: 'string',
-              description: 'Command for the agent to execute (e.g., "create-prd", "*create-architecture")',
+              description:
+                'Command for the agent to execute (e.g., "create-prd", "*create-architecture")',
             },
             context: {
               type: 'object',
@@ -507,10 +509,7 @@ Examples:
   /**
    * Execute safe bash command
    */
-  private async executeBashCommand(
-    command: string,
-    _description?: string
-  ): Promise<ToolResult> {
+  private async executeBashCommand(command: string, _description?: string): Promise<ToolResult> {
     const parts = command.trim().split(/\s+/);
     const cmd = parts[0];
     const args = parts.slice(1);
@@ -668,7 +667,10 @@ Examples:
       if (path.endsWith('/.directory')) continue;
 
       // Skip agent definitions (they're loaded for discovery, not output)
-      if (path.includes('/.bmad-core/agents/') || path.includes('/.bmad-') && path.endsWith('/agents/')) {
+      if (
+        path.includes('/.bmad-core/agents/') ||
+        (path.includes('/.bmad-') && path.endsWith('/agents/'))
+      ) {
         continue;
       }
 
@@ -891,7 +893,8 @@ Examples:
     if (!this.commandExecutor) {
       return {
         success: false,
-        error: 'Command execution is not enabled. Configure CommandExecutor via setCommandExecutor().',
+        error:
+          'Command execution is not enabled. Configure CommandExecutor via setCommandExecutor().',
       };
     }
 
@@ -904,14 +907,18 @@ Examples:
       const result = await this.commandExecutor.execute(command, args || [], options);
 
       // Format result as JSON for the LLM
-      const output = JSON.stringify({
-        success: result.success,
-        stdout: result.stdout,
-        stderr: result.stderr,
-        exitCode: result.exitCode,
-        duration: result.duration,
-        timedOut: result.timedOut,
-      }, null, 2);
+      const output = JSON.stringify(
+        {
+          success: result.success,
+          stdout: result.stdout,
+          stderr: result.stderr,
+          exitCode: result.exitCode,
+          duration: result.duration,
+          timedOut: result.timedOut,
+        },
+        null,
+        2
+      );
 
       return {
         success: result.success,

@@ -26,7 +26,7 @@ interface AgentMetadata {
 
 async function listAgents() {
   console.log('🔍 Agent Discovery via VFS Tools\n');
-  console.log('=' .repeat(60));
+  console.log('='.repeat(60));
 
   // Initialize client
   const client = new BmadClient({
@@ -130,8 +130,8 @@ async function listAgents() {
 }
 
 // Example: Filter agents by category
-async function filterAgentsByRole(role: string) {
-  console.log(`\n🔎 Filtering agents by role: "${role}"`);
+async function _filterAgentsByRole(_role: string) {
+  console.log(`\n🔎 Filtering agents by role: "${_role}"`);
 
   const client = new BmadClient({
     provider: {

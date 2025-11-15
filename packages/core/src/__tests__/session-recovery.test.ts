@@ -39,11 +39,11 @@ describe('Session Recovery and Auto-Save', () => {
 
       mockProvider.setResponses([
         {
-          text: 'First response',
+          content: 'First response',
           toolCalls: [],
         },
         {
-          text: 'Second response',
+          content: 'Second response',
           toolCalls: [],
         },
       ]);
@@ -65,7 +65,7 @@ describe('Session Recovery and Auto-Save', () => {
 
       mockProvider.setResponses([
         {
-          text: 'Response',
+          content: 'Response',
           toolCalls: [],
         },
       ]);
@@ -90,7 +90,7 @@ describe('Session Recovery and Auto-Save', () => {
 
       mockProvider.setResponses([
         {
-          text: 'Done',
+          content: 'Done',
           toolCalls: [],
         },
       ]);
@@ -115,7 +115,7 @@ describe('Session Recovery and Auto-Save', () => {
 
       mockProvider.setResponses([
         {
-          text: 'Creating PRD',
+          content: 'Creating PRD',
           toolCalls: [],
         },
       ]);
@@ -138,11 +138,11 @@ describe('Session Recovery and Auto-Save', () => {
 
       mockProvider.setResponses([
         {
-          text: 'Response 1',
+          content: 'Response 1',
           toolCalls: [],
         },
         {
-          text: 'Response 2',
+          content: 'Response 2',
           toolCalls: [],
         },
       ]);
@@ -174,7 +174,7 @@ describe('Session Recovery and Auto-Save', () => {
 
       mockProvider.setResponses([
         {
-          text: 'Done',
+          content: 'Done',
           toolCalls: [],
         },
       ]);
@@ -218,7 +218,7 @@ describe('Session Recovery and Auto-Save', () => {
 
         mockProvider.setResponses([
           {
-            text: `Response ${i}`,
+            content: `Response ${i}`,
             toolCalls: [],
           },
         ]);
@@ -243,7 +243,7 @@ describe('Session Recovery and Auto-Save', () => {
 
       mockProvider.setResponses([
         {
-          text: 'Design',
+          content: 'Design',
           toolCalls: [],
         },
       ]);
@@ -280,13 +280,13 @@ describe('Session Recovery and Auto-Save', () => {
 
     it('should delete session', async () => {
       const sessions = await client.listSessions();
-      const sessionToDelete = sessions.sessions[0].sessionId;
+      const sessionToDelete = sessions?.sessions[0]?.sessionId!;
 
       const deleted = await client.deleteSession(sessionToDelete);
       expect(deleted).toBe(true);
 
       // Verify session is gone
-      await expect(client.recoverSession(sessionToDelete)).rejects.toThrow();
+      await expect(client.recoverSession(sessionToDelete!)).rejects.toThrow();
 
       // Verify total count decreased
       const remaining = await client.listSessions();
@@ -324,7 +324,7 @@ describe('Session Recovery and Auto-Save', () => {
 
       mockProvider.setResponses([
         {
-          text: 'Done',
+          content: 'Done',
           toolCalls: [],
         },
       ]);

@@ -13,10 +13,7 @@ export {
   type TaskDefinition,
 } from './schema.js';
 
-export {
-  TaskLoader,
-  TaskNotFoundError,
-} from './loader.js';
+export { TaskLoader, TaskNotFoundError } from './loader.js';
 
 export {
   TaskExecutor,

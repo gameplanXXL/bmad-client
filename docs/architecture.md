@@ -7,12 +7,14 @@ This document defines the architecture for **BMad Client Library**, a Node.js/Ty
 ### Design Philosophy
 
 **Claude Code Emulation:** BMad agents are designed to work within Claude Code's environment. This SDK replicates that environment through:
+
 - System prompt generation that mimics Claude Code's instructions
 - In-memory Virtual Filesystem (VFS) with Claude Code-style tools
 - Pre-loading of BMAD templates and agent files into VFS
 - Session isolation ensuring each agent execution has independent state
 
 **Key Architectural Principles:**
+
 - **Session Isolation:** Each session gets its own VFS instance
 - **Tool-Use Protocol:** Anthropic's tool-use format for all tool calls
 - **Event-Driven:** Sessions emit events for questions, completion, errors
@@ -21,11 +23,11 @@ This document defines the architecture for **BMad Client Library**, a Node.js/Ty
 
 ### Change Log
 
-| Date | Version | Description | Author |
-|------|---------|-------------|--------|
-| 2025-10-31 | 1.0 | Initial architecture document | Winston (Architect) |
-| 2025-11-05 | 2.0 | Removed MCP, focused on VFS-based tool execution | Winston (Architect) |
-| 2025-11-06 | 3.0 | Added Conversational Session Pattern for Claude Code-like multi-turn interactions | Winston (Architect) |
+| Date       | Version | Description                                                                       | Author              |
+| ---------- | ------- | --------------------------------------------------------------------------------- | ------------------- |
+| 2025-10-31 | 1.0     | Initial architecture document                                                     | Winston (Architect) |
+| 2025-11-05 | 2.0     | Removed MCP, focused on VFS-based tool execution                                  | Winston (Architect) |
+| 2025-11-06 | 3.0     | Added Conversational Session Pattern for Claude Code-like multi-turn interactions | Winston (Architect) |
 
 ---
 
@@ -68,11 +70,13 @@ This document defines the architecture for **BMad Client Library**, a Node.js/Ty
 ### Technology Stack
 
 **Core:**
+
 - TypeScript 5.3+
 - Node.js 18+ (LTS)
 - pnpm 8+ (monorepo)
 
 **Dependencies:**
+
 - `@anthropic-ai/sdk` - Claude API integration
 - `zod` - Schema validation
 - `eventemitter3` - Event handling
@@ -80,6 +84,7 @@ This document defines the architecture for **BMad Client Library**, a Node.js/Ty
 - `minimatch` - Glob pattern matching
 
 **Dev Dependencies:**
+
 - Vitest - Testing
 - tsup - Build tool
 - TypeDoc - API documentation
@@ -123,6 +128,7 @@ class BmadClient {
 ```
 
 **Responsibilities:**
+
 - Validate configuration
 - Initialize provider (AnthropicProvider)
 - Create sessions with isolated VFS instances
@@ -153,6 +159,7 @@ class BmadSession extends EventEmitter {
 ```
 
 **Execution Flow:**
+
 1. Load agent definition from `.bmad-core/agents/{agentId}.md`
 2. Initialize VFS with templates and agent files
 3. Generate Claude Code-style system prompt
@@ -237,13 +244,13 @@ interface ConversationResult {
 
 **Key Differences from BmadSession:**
 
-| Feature | BmadSession | ConversationalSession |
-|---------|-------------|----------------------|
-| **Execution Model** | One-shot (execute → complete → done) | Multi-turn (send → wait → send → ...) |
-| **Context Retention** | Lost after execute() | Persistent across send() calls |
-| **VFS Lifetime** | Destroyed after execute() | Persistent for entire conversation |
-| **User Input** | One command per session | Multiple messages per conversation |
-| **Use Case** | Single task execution | Claude Code-like REPL |
+| Feature               | BmadSession                          | ConversationalSession                 |
+| --------------------- | ------------------------------------ | ------------------------------------- |
+| **Execution Model**   | One-shot (execute → complete → done) | Multi-turn (send → wait → send → ...) |
+| **Context Retention** | Lost after execute()                 | Persistent across send() calls        |
+| **VFS Lifetime**      | Destroyed after execute()            | Persistent for entire conversation    |
+| **User Input**        | One command per session              | Multiple messages per conversation    |
+| **Use Case**          | Single task execution                | Claude Code-like REPL                 |
 
 **Execution Flow:**
 
@@ -348,13 +355,11 @@ app.post('/api/conversations', async (req, res) => {
   conversations.set(conversation.id, conversation);
 
   // Send first message in background
-  conversation.send(req.body.message).catch(err =>
-    console.error('Conversation error:', err)
-  );
+  conversation.send(req.body.message).catch((err) => console.error('Conversation error:', err));
 
   res.json({
     conversationId: conversation.id,
-    status: 'processing'
+    status: 'processing',
   });
 });
 
@@ -370,9 +375,7 @@ app.post('/api/conversations/:id/messages', async (req, res) => {
     return res.status(409).json({ error: 'Agent is still processing previous message' });
   }
 
-  conversation.send(req.body.message).catch(err =>
-    console.error('Message error:', err)
-  );
+  conversation.send(req.body.message).catch((err) => console.error('Message error:', err));
 
   res.json({ status: 'processing' });
 });
@@ -390,7 +393,7 @@ app.get('/api/conversations/:id', async (req, res) => {
     isIdle: conversation.isIdle(),
     turns: conversation.getHistory(),
     documents: conversation.getDocuments(),
-    costs: conversation.getCosts()
+    costs: conversation.getCosts(),
   });
 });
 
@@ -447,6 +450,7 @@ class AgentLoader {
 ```
 
 **Discovery Paths:**
+
 1. `.bmad-core/agents/` (built-in)
 2. `node_modules/@bmad-*/agents/` (expansion packs)
 
@@ -461,41 +465,48 @@ class SystemPromptGenerator {
 ```
 
 **Generated Prompt Structure:**
+
 ```markdown
 You are Claude, an AI assistant with specialized tools...
 
 ## Available Tools
 
 ### read_file
+
 Read a text file from the virtual filesystem...
 Parameters: { file_path: string }
 
 ### write_file
+
 Write content to a text file...
 Parameters: { file_path: string, content: string }
 
 [... other tools ...]
 
 ## Tool Usage Rules
+
 - ALWAYS use read_file before edit_file
 - File paths must be absolute (starting with /)
 - Use bash_command only for safe commands (mkdir, echo, etc.)
 
 ## Workflow Guidelines
+
 1. Understand task from agent definition
 2. Use tools to gather information
 3. Execute task following agent instructions
 4. Verify results and respond to user
 
 ## Agent Persona
+
 Name: John
 Role: Product Manager
 [... persona details ...]
 
 ## Available Commands
-- *help - Show available commands
-- *create-prd - Create PRD using template
-[... agent commands ...]
+
+- \*help - Show available commands
+- \*create-prd - Create PRD using template
+  [... agent commands ...]
 
 Now, adopt this persona and await user commands.
 ```
@@ -529,14 +540,16 @@ class FallbackToolExecutor {
 ```
 
 **Supported Tools:**
+
 1. **read_file** - Read file from VFS
 2. **write_file** - Write file to VFS
 3. **edit_file** - Replace text in file
 4. **bash_command** - Safe commands only (mkdir, echo, pwd, ls)
 5. **grep_search** - Regex search across VFS files
-6. **glob_pattern** - File pattern matching (*.md, **/*.yaml)
+6. **glob_pattern** - File pattern matching (_.md, \*\*/_.yaml)
 
 **VFS Pre-loading:**
+
 ```typescript
 // At session start, VFS is populated with:
 const vfsInitialState = {
@@ -571,6 +584,7 @@ class AnthropicProvider implements LLMProvider {
 ```
 
 **Pricing (as of 2025-11):**
+
 - Sonnet 4: $3/MTok input, $15/MTok output
 - Opus 4: $15/MTok input, $75/MTok output
 - Haiku 4: $0.25/MTok input, $1.25/MTok output
@@ -716,7 +730,7 @@ describe('Complete Session Execution', () => {
     mockAnthropicAPI([
       { tool_use: ['read_file'] },
       { tool_use: ['write_file'] },
-      { end_turn: true }
+      { end_turn: true },
     ]);
 
     const result = await session.execute();
@@ -764,6 +778,7 @@ describe('Real Anthropic API', () => {
 ```
 
 **Build Output:**
+
 - ESM: `dist/index.js`
 - CommonJS: `dist/index.cjs`
 - Types: `dist/index.d.ts`
@@ -771,12 +786,10 @@ describe('Real Anthropic API', () => {
 ### Integration Patterns
 
 **Express API:**
+
 ```typescript
 app.post('/api/agents/:agentId/:command', async (req, res) => {
-  const session = await client.startAgent(
-    req.params.agentId,
-    req.params.command
-  );
+  const session = await client.startAgent(req.params.agentId, req.params.command);
 
   session.on('question', (q) => {
     res.write(JSON.stringify({ type: 'question', data: q }));
@@ -788,6 +801,7 @@ app.post('/api/agents/:agentId/:command', async (req, res) => {
 ```
 
 **Next.js Route Handler:**
+
 ```typescript
 export async function POST(request: Request) {
   const { agentId, command } = await request.json();
@@ -802,19 +816,23 @@ export async function POST(request: Request) {
 ## Performance Considerations
 
 **Session Initialization:** <100ms
+
 - Agent loading: ~20ms
 - VFS initialization: ~50ms
 - System prompt generation: ~10ms
 
 **Tool Execution:** <10ms per tool
+
 - VFS operations are in-memory Map lookups
 - No I/O overhead
 
 **LLM Latency:** 2-10 seconds per API call
+
 - Dominant factor in total session time
 - Depends on response length
 
 **Memory Usage:**
+
 - VFS: ~1-2MB per session (templates + generated docs)
 - Session overhead: ~500KB
 - Recommended: 10 concurrent sessions per 2GB RAM
@@ -824,16 +842,19 @@ export async function POST(request: Request) {
 ## Security Considerations
 
 **API Key Management:**
+
 - Never log API keys
 - Support environment variables
 - Validate key format on initialization
 
 **Tool Execution Safety:**
+
 - VFS is completely isolated (no real filesystem access)
 - bash_command whitelist: mkdir, echo, pwd, ls only
 - No arbitrary command execution
 
 **Cost Protection:**
+
 - Hard limits prevent runaway costs
 - Warning at 80% of limit
 - Detailed cost reporting
@@ -843,16 +864,19 @@ export async function POST(request: Request) {
 ## Future Enhancements
 
 **Phase 2:**
+
 - Google Cloud Storage integration for document persistence
 - Template & Task processing (YAML templates → Markdown documents)
 - Expansion pack loading from NPM packages
 
 **Phase 3:**
+
 - Real filesystem access for brownfield projects (optional)
 - External command execution (pandoc, pdflatex) with sandboxing
 - Multi-agent orchestration workflows
 
 **Phase 4:**
+
 - Streaming LLM responses for real-time feedback
 - Session state persistence for recovery
 - Advanced cost optimization (model routing)
@@ -884,6 +908,7 @@ export async function POST(request: Request) {
 **Maintained By:** Winston (Architect)
 
 **Version 3.0 Changes:**
+
 - Added ConversationalSession for multi-turn interactions (Claude Code-like REPL)
 - Documented key differences between BmadSession (one-shot) and ConversationalSession (multi-turn)
 - Added HTTP integration patterns for long-running conversations (polling, SSE)

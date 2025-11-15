@@ -11,6 +11,7 @@ Dieser Client ist darauf ausgelegt, mit **BMad Expansion Packs** zu arbeiten, di
 **Expansion Pack Speicherort:** `../bmad-export-author/`
 
 Im benachbarten Projekt befinden sich:
+
 1. **Expert Author** - Agenten für die Erstellung transformativer Sachbücher
 2. **Competency Assessor** - Systematische Extraktion und Dokumentation von Expertise
 
@@ -52,6 +53,7 @@ Wenn du als Agent Expansion Pack Definitionen, Agenten oder Templates benötigst
 ### Zugriff auf Expansion Pack Agenten
 
 **Expert Author Agenten:**
+
 ```bash
 # Source Agenten (DEVELOPMENT)
 ../bmad-export-author/expansion-packs/expert-author/agents/*.md
@@ -61,6 +63,7 @@ Wenn du als Agent Expansion Pack Definitionen, Agenten oder Templates benötigst
 ```
 
 **Competency Assessor Agenten:**
+
 ```bash
 # Source Agenten (DEVELOPMENT)
 ../bmad-export-author/expansion-packs/competency-assessor/agents/*.md
@@ -72,12 +75,14 @@ Wenn du als Agent Expansion Pack Definitionen, Agenten oder Templates benötigst
 ### Templates und Tasks
 
 **Expert Author:**
+
 ```bash
 ../bmad-export-author/.bmad-expert-author/templates/*.yaml
 ../bmad-export-author/.bmad-expert-author/tasks/*.md
 ```
 
 **Competency Assessor:**
+
 ```bash
 ../bmad-export-author/.bmad-competency-assessor/templates/*.yaml
 ../bmad-export-author/.bmad-competency-assessor/tasks/*.md
@@ -136,6 +141,7 @@ bmad-client/                          # DIESES PROJEKT
 Dieses Projekt soll folgende **Core BMad Agenten** unterstützen (via Client Library):
 
 ### Software Development Agents
+
 - **pm** (Product Manager) - PRD-Erstellung, Produktstrategie
 - **po** (Product Owner) - User Stories, Sprint Planning
 - **architect** (Architect) - Architektur-Design, Tech Stack
@@ -148,6 +154,7 @@ Dieses Projekt soll folgende **Core BMad Agenten** unterstützen (via Client Lib
 ### Content Creation Agents (via Expansion Packs)
 
 **Expert Author (17 Agenten in `../bmad-export-author/`):**
+
 - book-strategist, learning-architect, skill-analyzer, content-structurer
 - book-author, exercise-designer, case-study-curator, researcher
 - document-processor, ea-shard
@@ -155,6 +162,7 @@ Dieses Projekt soll folgende **Core BMad Agenten** unterstützen (via Client Lib
 - reader-motivation, workbook-developer
 
 **Competency Assessor (7 Agenten in `../bmad-export-author/`):**
+
 - skill-interviewer, knowledge-extractor, framework-architect
 - learning-designer, documentation-specialist, assessment-designer
 - quality-reviewer
@@ -192,6 +200,7 @@ Read ../bmad-export-author/.bmad-expert-author/templates/book-blueprint-tmpl.yam
 ```
 
 **NIEMALS:**
+
 - Expansion Pack Dateien in dieses Repository kopieren
 - Annahmen über Expansion Pack Struktur treffen ohne zu prüfen
 - Expansion Packs committen oder modifizieren (nur Lesen!)
@@ -199,12 +208,14 @@ Read ../bmad-export-author/.bmad-expert-author/templates/book-blueprint-tmpl.yam
 ### 2. Entwicklung vs. Referenz
 
 **Dieses Projekt (bmad-client):**
+
 - Entwicklung des SDK (TypeScript/Node.js)
 - Keine Agent-Definitionen hier (werden dynamisch geladen)
 - Tests für Agent-Loading-Mechanismus
 - Beispiele für Integration
 
 **Benachbartes Projekt (bmad-export-author):**
+
 - Referenz für Agent-Struktur und Format
 - Referenz für Template-YAML-Schema
 - Referenz für Task-Workflow-Definition
@@ -213,6 +224,7 @@ Read ../bmad-export-author/.bmad-expert-author/templates/book-blueprint-tmpl.yam
 ### 3. Git-Workflow
 
 **In diesem Projekt (bmad-client):**
+
 - Commits erfolgen normal für SDK-Code
 - Dokumentation wird committet
 - Tests werden committet
@@ -221,6 +233,7 @@ Read ../bmad-export-author/.bmad-expert-author/templates/book-blueprint-tmpl.yam
 ### 4. Testing mit Expansion Packs
 
 **Integration Tests:**
+
 ```typescript
 // Beispiel: Agent-Loading von Expansion Pack testen
 describe('Expansion Pack Loading', () => {
@@ -231,7 +244,7 @@ describe('Expansion Pack Loading', () => {
     );
 
     expect(agents.length).toBeGreaterThan(0);
-    expect(agents.some(a => a.agent.id === 'book-author')).toBe(true);
+    expect(agents.some((a) => a.agent.id === 'book-author')).toBe(true);
   });
 });
 ```
@@ -239,11 +252,13 @@ describe('Expansion Pack Loading', () => {
 ### 5. Dokumentation
 
 **Bei Architektur-Entscheidungen:**
+
 - Referenziere Expansion Pack Struktur in docs/architecture.md
 - Erkläre Agent-Loading-Mechanismus
 - Zeige Beispiele für Expansion Pack Integration
 
 **Bei API-Dokumentation:**
+
 - Erkläre, wie Expansion Packs geladen werden
 - Zeige Pfade zu Expansion Pack Ordnern
 - Gib Beispiele für NPM-Package-basierte Expansion Packs
@@ -285,12 +300,14 @@ Read ../bmad-export-author/.bmad-expert-author/tasks/create-deep-research-prompt
 ## Wichtige Dateien
 
 ### In diesem Projekt (bmad-client)
+
 - `docs/prd.md` - Product Requirements Document (vollständig)
 - `docs/architecture.md` - Architektur-Dokumentation (vollständig)
 - `docs/brief.md` - Project Brief
 - `CLAUDE.md` - Diese Datei
 
 ### Im benachbarten Projekt (bmad-export-author)
+
 - `CLAUDE.md` - Expansion Pack Dokumentation
 - `expansion-packs/expert-author/README.md` - Expert Author Doku
 - `expansion-packs/competency-assessor/README.md` - Competency Assessor Doku
@@ -300,6 +317,7 @@ Read ../bmad-export-author/.bmad-expert-author/tasks/create-deep-research-prompt
 ### Model Context Protocol (MCP)
 
 Der Client verwendet **MCP (Model Context Protocol)** für Tool-Ausführung:
+
 - MCP Server als externe Prozesse (stdio/SSE)
 - JSON-RPC 2.0 Kommunikation
 - Tool Discovery via `tools/list`
@@ -309,6 +327,7 @@ Der Client verwendet **MCP (Model Context Protocol)** für Tool-Ausführung:
 ### Agent-Loading-System
 
 Agenten werden dynamisch geladen:
+
 1. Markdown-Dateien mit YAML Frontmatter
 2. Schema-Validierung mit Zod
 3. Agent Registry für O(1) Lookup
@@ -317,6 +336,7 @@ Agenten werden dynamisch geladen:
 ### Session Management
 
 Sessions sind die zentrale Orchestrierungseinheit:
+
 - Conversation State
 - Pause/Resume für User Questions
 - Cost Tracking in Echtzeit
@@ -325,6 +345,7 @@ Sessions sind die zentrale Orchestrierungseinheit:
 ### Template Processing
 
 Templates definieren Dokument-Struktur:
+
 - YAML-basiert mit Sections
 - Variable Substitution
 - Elicitation-Logic für User Input

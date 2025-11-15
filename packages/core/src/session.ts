@@ -56,12 +56,7 @@ export class BmadSession extends EventEmitter {
     reject: (error: Error) => void;
   };
 
-  constructor(
-    client: BmadClient,
-    agentId: string,
-    command: string,
-    options?: SessionOptions
-  ) {
+  constructor(client: BmadClient, agentId: string, command: string, options?: SessionOptions) {
     super();
     this.client = client;
     this.agentId = agentId;
@@ -79,7 +74,9 @@ export class BmadSession extends EventEmitter {
 
     // Initialize VFS if context has initial files
     if (this.options.context?.['initialFiles']) {
-      this.toolExecutor.initializeFiles(this.options.context['initialFiles'] as Record<string, string>);
+      this.toolExecutor.initializeFiles(
+        this.options.context['initialFiles'] as Record<string, string>
+      );
     }
 
     this.client.getLogger().debug('Session created', {
@@ -87,6 +84,198 @@ export class BmadSession extends EventEmitter {
       agentId,
       command,
     });
+  }
+
+  /**
+   * Continue the conversation with a new message in the same session
+   *
+   * Allows sending additional messages to the agent after initial execution.
+   * Useful for multi-turn conversations within the same session context.
+   *
+   * @param message - User message to send to the agent
+   * @returns Session result for this continuation
+   *
+   * @example
+   * ```typescript
+   * const session = await client.startAgent('pm', '*help');
+   * const result1 = await session.execute();
+   *
+   * // Continue the same conversation
+   * const result2 = await session.continueWith('What is your role?');
+   * ```
+   */
+  async continueWith(message: string): Promise<SessionResult> {
+    // Reset status to running
+    this.status = 'running';
+    const continueStartTime = Date.now();
+
+    this.client.getLogger().info('Continuing session with new message', {
+      sessionId: this.id,
+      message,
+    });
+
+    try {
+      // Add user message to conversation
+      this.messages.push({
+        role: 'user',
+        content: message,
+      });
+
+      // Get tools for this continuation
+      const tools = this.toolExecutor.getTools();
+
+      // Continue tool call loop
+      let loopCount = 0;
+      const maxLoops = 50; // Safety limit
+
+      while (loopCount < maxLoops) {
+        loopCount++;
+
+        // Send message to LLM
+        const response = await this.provider!.sendMessage(this.messages, tools);
+
+        // Track usage
+        this.totalInputTokens += response.usage.inputTokens;
+        this.totalOutputTokens += response.usage.outputTokens;
+        this.apiCallCount++;
+
+        if (this.costTracker) {
+          const modelInfo = this.provider!.getModelInfo();
+          this.costTracker.recordUsage(response.usage, modelInfo.name);
+        }
+
+        this.client.getLogger().debug('LLM response received', {
+          stopReason: response.stopReason,
+          hasToolCalls: !!response.message.toolCalls,
+          toolCallCount: response.message.toolCalls?.length || 0,
+        });
+
+        // Add assistant message to conversation
+        this.messages.push({
+          role: 'assistant',
+          content: response.message.content,
+        });
+
+        // Auto-save session state if enabled
+        if (this.options.autoSave) {
+          await this.autoSaveState();
+        }
+
+        // Check stop reason
+        if (response.stopReason === 'end_turn' || response.stopReason === 'stop_sequence') {
+          this.client.getLogger().info('Agent completed continuation', { loopCount });
+          break;
+        }
+
+        if (response.stopReason === 'max_tokens') {
+          this.client.getLogger().warn('Max tokens reached');
+          break;
+        }
+
+        // Handle tool calls
+        if (response.stopReason === 'tool_use' && response.message.toolCalls) {
+          this.client.getLogger().debug('Executing tool calls', {
+            count: response.message.toolCalls.length,
+          });
+
+          // Execute all tool calls
+          const toolResults = await Promise.all(
+            response.message.toolCalls.map((toolCall) =>
+              this.executeTool(toolCall.id, toolCall.name, toolCall.input)
+            )
+          );
+
+          // Add tool results to conversation
+          this.messages.push({
+            role: 'user',
+            content: this.formatToolResults(response.message.toolCalls, toolResults),
+          });
+
+          // Check cost limit
+          if (this.options.costLimit) {
+            const currentCost = this.calculateCurrentCost();
+            if (currentCost >= this.options.costLimit) {
+              this.client.getLogger().warn('Cost limit exceeded', {
+                currentCost,
+                limit: this.options.costLimit,
+              });
+              throw new Error(
+                `Cost limit exceeded: $${currentCost.toFixed(4)} >= $${this.options.costLimit}`
+              );
+            }
+          }
+
+          // Continue loop
+          continue;
+        }
+
+        // Should not reach here
+        break;
+      }
+
+      if (loopCount >= maxLoops) {
+        throw new Error(`Max loop iterations (${maxLoops}) exceeded`);
+      }
+
+      // Build result for this continuation
+      const documents = this.toolExecutor.getDocuments();
+      const costs = this.buildCostReport();
+
+      // Extract final assistant response
+      const assistantMessages = this.messages.filter((m) => m.role === 'assistant');
+      const lastAssistantMessage = assistantMessages[assistantMessages.length - 1];
+      const finalResponse = lastAssistantMessage
+        ? this.extractTextContent(lastAssistantMessage.content)
+        : undefined;
+
+      const result: SessionResult = {
+        status: 'completed',
+        documents,
+        costs,
+        duration: Date.now() - continueStartTime,
+        messages: this.messages,
+        finalResponse,
+      };
+
+      this.status = 'completed';
+      this.emit('completed', result);
+
+      this.client.getLogger().info('Session continuation completed', {
+        sessionId: this.id,
+        documentCount: documents.length,
+        totalCost: costs.totalCost,
+        apiCalls: this.apiCallCount,
+      });
+
+      // Auto-save with completed status
+      if (this.options.autoSave) {
+        await this.autoSaveState();
+      }
+
+      return result;
+    } catch (error) {
+      this.status = 'failed';
+      const result: SessionResult = {
+        status: 'failed',
+        documents: this.toolExecutor.getDocuments(),
+        costs: this.buildCostReport(),
+        duration: Date.now() - continueStartTime,
+        error: error as Error,
+      };
+
+      this.client.getLogger().error('Session continuation failed', {
+        sessionId: this.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      // Auto-save with failed status
+      if (this.options.autoSave) {
+        await this.autoSaveState();
+      }
+
+      this.emit('failed', error);
+      return result;
+    }
   }
 
   /**
@@ -237,9 +426,7 @@ export class BmadSession extends EventEmitter {
             timestamp: this.startTime!,
           });
 
-          storageUrls = results
-            .filter((r) => r.success && r.url)
-            .map((r) => r.url!);
+          storageUrls = results.filter((r) => r.success && r.url).map((r) => r.url!);
 
           this.client.getLogger().info('Documents saved to storage', {
             sessionId: this.id,
@@ -584,7 +771,7 @@ export class BmadSession extends EventEmitter {
       }
 
       // Load all documents
-      const paths = result.documents.map(d => d.path);
+      const paths = result.documents.map((d) => d.path);
       return await this.loadDocuments(paths);
     } catch (error) {
       this.client.getLogger().error('Failed to load session documents', {
@@ -614,7 +801,10 @@ export class BmadSession extends EventEmitter {
     }
 
     // Fallback: Try bmad-export-author for testing
-    const fallbackPath = resolve(process.cwd(), `../bmad-export-author/.bmad-core/agents/${this.agentId}.md`);
+    const fallbackPath = resolve(
+      process.cwd(),
+      `../bmad-export-author/.bmad-core/agents/${this.agentId}.md`
+    );
     triedPaths.push(fallbackPath);
 
     try {
@@ -642,9 +832,7 @@ export class BmadSession extends EventEmitter {
       }
     }
 
-    throw new Error(
-      `Agent not found: ${this.agentId}. Tried ${triedPaths.join(', ')}`
-    );
+    throw new Error(`Agent not found: ${this.agentId}. Tried ${triedPaths.join(', ')}`);
   }
 
   /**
@@ -910,9 +1098,11 @@ Result: ${result.result}`;
       const expansionPacks = await this.agentLoader.loadExpansionPacks(expansionPackPaths);
 
       for (const pack of expansionPacks) {
-        this.client.getLogger().info(`Found expansion pack: ${pack.name} with ${pack.agentCount} agents`, {
-          path: pack.path,
-        });
+        this.client
+          .getLogger()
+          .info(`Found expansion pack: ${pack.name} with ${pack.agentCount} agents`, {
+            path: pack.path,
+          });
 
         // Add expansion pack agent files to VFS loading list
         // We need the file paths, so we'll construct them

@@ -18,19 +18,20 @@ The active version is located at: `.bmad-core/agents/bmad-orchestrator.md`
 
 ### Architecture
 
-| **Aspect** | **Claude Code** | **BMad Client SDK** |
-|------------|-----------------|---------------------|
-| **Agent Switching** | System Prompt Replacement (SlashCommand) | Nested Sessions (invoke_agent tool) |
-| **Identity** | Orchestrator "becomes" PM | Orchestrator "invokes" PM |
-| **Tool** | `SlashCommand("/BMad:agents:pm")` | `invoke_agent({ agent_id: "pm", ... })` |
-| **Session Model** | Single session, persona swap | Parent-child session hierarchy |
-| **Context** | Shared conversation memory | Explicit context passing |
-| **Documents** | Shared VFS | Child VFS merged to parent |
-| **Costs** | Single session total | Aggregated parent + children |
+| **Aspect**          | **Claude Code**                          | **BMad Client SDK**                     |
+| ------------------- | ---------------------------------------- | --------------------------------------- |
+| **Agent Switching** | System Prompt Replacement (SlashCommand) | Nested Sessions (invoke_agent tool)     |
+| **Identity**        | Orchestrator "becomes" PM                | Orchestrator "invokes" PM               |
+| **Tool**            | `SlashCommand("/BMad:agents:pm")`        | `invoke_agent({ agent_id: "pm", ... })` |
+| **Session Model**   | Single session, persona swap             | Parent-child session hierarchy          |
+| **Context**         | Shared conversation memory               | Explicit context passing                |
+| **Documents**       | Shared VFS                               | Child VFS merged to parent              |
+| **Costs**           | Single session total                     | Aggregated parent + children            |
 
 ### Core Principles Changes
 
 **OLD (Claude Code):**
+
 ```yaml
 core_principles:
   - Become any agent on demand
@@ -38,6 +39,7 @@ core_principles:
 ```
 
 **NEW (SDK):**
+
 ```yaml
 core_principles:
   - Orchestrate specialized agents via invoke_agent tool
@@ -50,6 +52,7 @@ core_principles:
 ### Tool Usage
 
 **invoke_agent Example:**
+
 ```typescript
 // Orchestrator delegates to PM
 invoke_agent({
@@ -105,6 +108,7 @@ Total Cost: $1.87 (aggregated across all sub-agents)
 ### Result Presentation Format
 
 **Template:**
+
 ```
 ✓ [Agent Title] completed [task] ($X.XX)
 
@@ -120,6 +124,7 @@ Next suggested steps:
 ```
 
 **Example:**
+
 ```
 ✓ PM completed PRD ($0.42)
 
@@ -161,28 +166,29 @@ Always include relevant context when invoking sub-agents:
 
 ```typescript
 invoke_agent({
-  agent_id: "architect",
-  command: "create-architecture",
+  agent_id: 'architect',
+  command: 'create-architecture',
   context: {
     // Reference to previous documents
-    prd_path: "/docs/prd.md",
+    prd_path: '/docs/prd.md',
 
     // Extracted key information
-    tech_stack: ["Node.js", "TypeScript", "PostgreSQL"],
+    tech_stack: ['Node.js', 'TypeScript', 'PostgreSQL'],
 
     // User requirements
-    scalability: "Must handle 10K concurrent users",
+    scalability: 'Must handle 10K concurrent users',
 
     // Constraints
     budget: 50000,
-    timeline: "3 months"
-  }
-})
+    timeline: '3 months',
+  },
+});
 ```
 
 ### Error Handling
 
 If a sub-agent fails:
+
 ```json
 {
   "success": false,
@@ -191,6 +197,7 @@ If a sub-agent fails:
 ```
 
 Orchestrator should:
+
 1. Log the error
 2. Inform user about failure
 3. Suggest corrective action (increase budget, simplify requirements, etc.)
@@ -234,10 +241,7 @@ const client = new BmadClient({
   },
 });
 
-const session = await client.startAgent(
-  'bmad-orchestrator',
-  'create a PRD for my web app'
-);
+const session = await client.startAgent('bmad-orchestrator', 'create a PRD for my web app');
 
 session.on('completed', (result) => {
   console.log('Documents:', result.documents);

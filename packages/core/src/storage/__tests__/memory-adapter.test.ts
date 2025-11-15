@@ -167,26 +167,35 @@ describe('InMemoryStorageAdapter', () => {
   describe('list', () => {
     beforeEach(async () => {
       // Save multiple documents with different metadata
-      await storage.save({ path: '/doc1.md', content: 'Doc 1' }, {
-        sessionId: 'sess_1',
-        agentId: 'pm',
-        command: 'create-prd',
-        timestamp: 1000,
-      });
+      await storage.save(
+        { path: '/doc1.md', content: 'Doc 1' },
+        {
+          sessionId: 'sess_1',
+          agentId: 'pm',
+          command: 'create-prd',
+          timestamp: 1000,
+        }
+      );
 
-      await storage.save({ path: '/doc2.md', content: 'Doc 2' }, {
-        sessionId: 'sess_1',
-        agentId: 'architect',
-        command: 'create-architecture',
-        timestamp: 2000,
-      });
+      await storage.save(
+        { path: '/doc2.md', content: 'Doc 2' },
+        {
+          sessionId: 'sess_1',
+          agentId: 'architect',
+          command: 'create-architecture',
+          timestamp: 2000,
+        }
+      );
 
-      await storage.save({ path: '/doc3.md', content: 'Doc 3' }, {
-        sessionId: 'sess_2',
-        agentId: 'pm',
-        command: 'create-prd',
-        timestamp: 3000,
-      });
+      await storage.save(
+        { path: '/doc3.md', content: 'Doc 3' },
+        {
+          sessionId: 'sess_2',
+          agentId: 'pm',
+          command: 'create-prd',
+          timestamp: 3000,
+        }
+      );
     });
 
     it('should list all documents without filter', async () => {
@@ -218,24 +227,27 @@ describe('InMemoryStorageAdapter', () => {
       });
 
       expect(result.documents).toHaveLength(1);
-      expect(result.documents[0].path).toBe('/doc2.md');
+      expect(result.documents[0]!.path).toBe('/doc2.md');
     });
 
     it('should filter by tags', async () => {
-      await storage.save({ path: '/tagged.md', content: 'Tagged' }, {
-        sessionId: 'sess_x',
-        agentId: 'pm',
-        command: 'test',
-        timestamp: 1000,
-        tags: { type: 'prd', version: 'v1' },
-      });
+      await storage.save(
+        { path: '/tagged.md', content: 'Tagged' },
+        {
+          sessionId: 'sess_x',
+          agentId: 'pm',
+          command: 'test',
+          timestamp: 1000,
+          tags: { type: 'prd', version: 'v1' },
+        }
+      );
 
       const result = await storage.list({
         tags: { type: 'prd' },
       });
 
       expect(result.documents).toHaveLength(1);
-      expect(result.documents[0].path).toBe('/tagged.md');
+      expect(result.documents[0]!.path).toBe('/tagged.md');
     });
 
     it('should support pagination', async () => {
@@ -271,9 +283,7 @@ describe('InMemoryStorageAdapter', () => {
     });
 
     it('should throw StorageNotFoundError for non-existent document', async () => {
-      await expect(storage.getMetadata('/does-not-exist.md')).rejects.toThrow(
-        StorageNotFoundError
-      );
+      await expect(storage.getMetadata('/does-not-exist.md')).rejects.toThrow(StorageNotFoundError);
     });
 
     it('should return copy of metadata', async () => {

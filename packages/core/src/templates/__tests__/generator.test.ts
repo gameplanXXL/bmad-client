@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { DocumentGenerator, ElicitationError } from '../generator.js';
 import type { TemplateDefinition } from '../schema.js';
 import type { DocumentContext, ElicitationQuestion } from '../generator.js';
@@ -409,9 +409,9 @@ describe('DocumentGenerator', () => {
       const result = await generator.generate();
 
       expect(questionReceived).not.toBeNull();
-      expect(questionReceived?.sectionId).toBe('user-input');
-      expect(questionReceived?.instruction).toBe('Please describe your project');
-      expect(questionReceived?.elicitationMethod).toBe('numbered-options');
+      expect((questionReceived as any).sectionId).toBe('user-input');
+      expect((questionReceived as any).instruction).toBe('Please describe your project');
+      expect((questionReceived as any).elicitationMethod).toBe('numbered-options');
       expect(result.content).toContain('User provided this answer');
       expect(result.context['user-input']).toBe('User provided this answer');
     });
@@ -435,7 +435,7 @@ describe('DocumentGenerator', () => {
       let answerIndex = 0;
 
       const generator = new DocumentGenerator(template);
-      generator.onQuestion(async () => answers[answerIndex++]);
+      generator.onQuestion(async () => answers[answerIndex++]!);
 
       const result = await generator.generate();
 
@@ -462,7 +462,9 @@ describe('DocumentGenerator', () => {
       });
 
       await expect(generator.generate()).rejects.toThrow(ElicitationError);
-      await expect(generator.generate()).rejects.toThrow('Elicitation failed for section: error-section');
+      await expect(generator.generate()).rejects.toThrow(
+        'Elicitation failed for section: error-section'
+      );
     });
 
     it('should skip elicitation when no handler is set', async () => {
@@ -624,8 +626,8 @@ describe('DocumentGenerator', () => {
 
       const result = await generator.generate();
 
-      expect(result.context.q1).toBe('Answer 1');
-      expect(result.context.q2).toBe('Answer 2');
+      expect(result.context['q1']).toBe('Answer 1');
+      expect(result.context['q2']).toBe('Answer 2');
       expect(result.content).toContain('Q1: Answer 1, Q2: Answer 2');
     });
 
@@ -645,13 +647,13 @@ describe('DocumentGenerator', () => {
       });
 
       const contextBefore = generator.getContext();
-      expect(contextBefore.initial).toBe('value');
+      expect(contextBefore['initial']).toBe('value');
 
       generator.updateContext({ updated: 'new value' });
 
       const contextAfter = generator.getContext();
-      expect(contextAfter.initial).toBe('value');
-      expect(contextAfter.updated).toBe('new value');
+      expect(contextAfter['initial']).toBe('value');
+      expect(contextAfter['updated']).toBe('new value');
     });
   });
 

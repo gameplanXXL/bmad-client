@@ -1,4 +1,11 @@
-import type { CostReport, ModelCost, ChildSessionCost, Usage, LLMProvider, Logger } from '../types.js';
+import type {
+  CostReport,
+  ModelCost,
+  ChildSessionCost,
+  Usage,
+  LLMProvider,
+  Logger,
+} from '../types.js';
 import { EventEmitter } from 'eventemitter3';
 
 /**
@@ -53,12 +60,15 @@ export class CostTracker extends EventEmitter<CostTrackerEvents> {
   private apiCallCount = 0;
 
   // Per-model breakdown
-  private modelBreakdown: Map<string, {
-    inputTokens: number;
-    outputTokens: number;
-    inputCost: number;
-    outputCost: number;
-  }> = new Map();
+  private modelBreakdown: Map<
+    string,
+    {
+      inputTokens: number;
+      outputTokens: number;
+      inputCost: number;
+      outputCost: number;
+    }
+  > = new Map();
 
   // Child sessions
   private childSessions: ChildSessionCost[] = [];
@@ -191,11 +201,7 @@ export class CostTracker extends EventEmitter<CostTrackerEvents> {
       this.logger?.error('Cost limit exceeded', errorData);
       this.emit('cost-limit-exceeded', errorData);
 
-      throw new CostLimitExceededError(
-        this.totalCost,
-        this.config.costLimit,
-        this.config.currency
-      );
+      throw new CostLimitExceededError(this.totalCost, this.config.costLimit, this.config.currency);
     }
   }
 
@@ -308,7 +314,7 @@ export class CostLimitExceededError extends Error {
   ) {
     super(
       `Cost limit exceeded: ${currency} ${currentCost.toFixed(4)} > ${currency} ${limit.toFixed(2)}. ` +
-      `Consider increasing costLimit or optimizing prompts to reduce token usage.`
+        `Consider increasing costLimit or optimizing prompts to reduce token usage.`
     );
     this.name = 'CostLimitExceededError';
   }

@@ -13,11 +13,13 @@ npm install
 ### Option A: Using .env file (Recommended)
 
 1. Copy the example environment file:
+
    ```bash
    cp .env.example .env
    ```
 
 2. Edit `.env` and add your Anthropic API key:
+
    ```
    ANTHROPIC_API_KEY=sk-ant-your-actual-key-here
    ```
@@ -133,6 +135,7 @@ All 84 tests should pass.
 ## Security Notes
 
 ⚠️ **Important:**
+
 - Never commit your `.env` file to Git
 - The `.gitignore` already includes `.env`
 - Keep your API key secret
@@ -147,6 +150,7 @@ Typical costs per agent execution:
 - Document generation: ~$0.10 - $0.50
 
 Models:
+
 - Haiku: ~10x cheaper, faster, less capable
 - Sonnet: Balanced (recommended)
 - Opus: ~5x more expensive, most capable
@@ -155,6 +159,6 @@ You can set cost limits in your code:
 
 ```typescript
 const session = await client.startAgent('pm', '*help', {
-  costLimit: 0.10  // Max $0.10 per session
+  costLimit: 0.1, // Max $0.10 per session
 });
 ```

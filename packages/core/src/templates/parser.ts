@@ -1,6 +1,7 @@
 import { parse as parseYaml } from 'yaml';
-import { TemplateSchema, TemplateValidationError } from './schema.js';
-import type { TemplateDefinition } from './schema.js';
+import { TemplateSchema } from './schema.js';
+import type { TemplateDefinition, Section } from './schema.js';
+import { TemplateValidationError } from './schema.js';
 
 /**
  * Parse YAML template content and validate against schema
@@ -29,10 +30,7 @@ export function parseTemplate(yamlContent: string): TemplateDefinition {
     const result = TemplateSchema.safeParse(parsed);
 
     if (!result.success) {
-      throw new TemplateValidationError(
-        'Template validation failed',
-        result.error
-      );
+      throw new TemplateValidationError('Template validation failed', result.error);
     }
 
     return result.data;
@@ -43,9 +41,7 @@ export function parseTemplate(yamlContent: string): TemplateDefinition {
 
     // Handle YAML parsing errors
     if (error instanceof Error) {
-      throw new TemplateValidationError(
-        `Failed to parse YAML template: ${error.message}`
-      );
+      throw new TemplateValidationError(`Failed to parse YAML template: ${error.message}`);
     }
 
     throw new TemplateValidationError('Unknown error parsing template');
@@ -63,10 +59,7 @@ export function validateTemplate(templateObj: unknown): TemplateDefinition {
   const result = TemplateSchema.safeParse(templateObj);
 
   if (!result.success) {
-    throw new TemplateValidationError(
-      'Template validation failed',
-      result.error
-    );
+    throw new TemplateValidationError('Template validation failed', result.error);
   }
 
   return result.data;
@@ -79,15 +72,15 @@ export function validateTemplate(templateObj: unknown): TemplateDefinition {
  * @returns true if any section has elicit: true
  */
 export function hasElicitation(template: TemplateDefinition): boolean {
-  const checkSections = (sections: typeof template.sections): boolean => {
-    return sections.some(section => {
+  const checkSections = (sections: Section[]): boolean => {
+    return sections.some((section) => {
       if (section.elicit) return true;
       if (section.sections) return checkSections(section.sections);
       return false;
     });
   };
 
-  return checkSections(template.sections);
+  return template.sections ? checkSections(template.sections) : false;
 }
 
 /**
@@ -99,8 +92,8 @@ export function hasElicitation(template: TemplateDefinition): boolean {
 export function extractSectionIds(template: TemplateDefinition): string[] {
   const ids: string[] = [];
 
-  const collectIds = (sections: typeof template.sections): void => {
-    sections.forEach(section => {
+  const collectIds = (sections: Section[]): void => {
+    sections.forEach((section) => {
       ids.push(section.id);
       if (section.sections) {
         collectIds(section.sections);
@@ -108,7 +101,9 @@ export function extractSectionIds(template: TemplateDefinition): string[] {
     });
   };
 
-  collectIds(template.sections);
+  if (template.sections) {
+    collectIds(template.sections);
+  }
   return ids;
 }
 
@@ -128,6 +123,6 @@ export function getTemplateSummary(template: TemplateDefinition) {
     mode: template.workflow?.mode || 'automated',
     sectionCount: extractSectionIds(template).length,
     hasElicitation: hasElicitation(template),
-    isRepeatable: template.sections.some(s => s.repeatable),
+    isRepeatable: template.sections?.some((s) => s.repeatable) ?? false,
   };
 }

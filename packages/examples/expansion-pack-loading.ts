@@ -58,7 +58,6 @@ async function main() {
     console.log('  - Expansion packs must follow .bmad-* naming convention');
     console.log('  - Each pack should have an agents/ subdirectory');
     console.log('  - Agents are loaded automatically on session creation');
-
   } catch (error) {
     console.error('❌ Error:', error instanceof Error ? error.message : error);
   }
@@ -86,7 +85,7 @@ async function discoverExpansionPacks() {
       // List first few agents
       const agentList = pack.agents
         .slice(0, 5)
-        .map(a => a.agent.id)
+        .map((a) => a.agent.id)
         .join(', ');
 
       console.log(`     Sample: ${agentList}`);
@@ -102,7 +101,6 @@ async function discoverExpansionPacks() {
       console.log('  No expansion packs found in parent directory');
       console.log('  Create a .bmad-* directory with agents/ subdirectory\n');
     }
-
   } catch (error) {
     console.error('❌ Error discovering packs:', error instanceof Error ? error.message : error);
   }

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BmadClient } from '../client.js';
-import { AgentLoader } from '../agent-loader.js';
 import { MockLLMProvider } from './mock-llm-provider.js';
 import type { AgentDefinition } from '../types.js';
 
@@ -38,6 +37,9 @@ vi.mock('../agent-loader.js', () => ({
 describe('Pause/Resume Tests', () => {
   let client: BmadClient;
   let mockProvider: MockLLMProvider;
+  // For skipped tests that use old API
+  const mockAnthropicResponses: any[] = [];
+  const createMockResponse = (params: any) => params;
 
   beforeEach(() => {
     mockProvider = new MockLLMProvider({

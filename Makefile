@@ -77,7 +77,14 @@ demo-debug:
 
 build:
 	@echo "🔨 Building all packages..."
-	@npm run build
+	@echo "  Step 1: Building core package..."
+	@npm run build --workspace=@bmad/client
+	@echo "  Step 2: Building storage packages..."
+	@npm run build --workspace=@bmad/storage-gcs --if-present
+	@npm run build --workspace=@bmad/storage-supabase --if-present
+	@echo "  Step 3: Building examples..."
+	@npm run build --workspace=@bmad/example-express-api --if-present
+	@npm run build --workspace=@bmad/example-standalone-script --if-present
 
 typecheck:
 	@echo "📝 Running TypeScript type checking..."

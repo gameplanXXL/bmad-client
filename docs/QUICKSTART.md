@@ -21,6 +21,7 @@ npm install @bmad/client
 ```
 
 **Requirements:**
+
 - Node.js 18+
 - TypeScript 5.3+ (optional but recommended)
 - Anthropic API Key
@@ -225,7 +226,7 @@ const recentSessions = await client.listSessions({
 ```typescript
 const client = new BmadClient({
   provider: { type: 'anthropic', apiKey: process.env.ANTHROPIC_API_KEY },
-  costLimit: 5.00, // Stop at $5.00
+  costLimit: 5.0, // Stop at $5.00
 });
 ```
 
@@ -284,7 +285,11 @@ if (!health.healthy) {
 // Check individual components
 console.log('Provider:', health.provider.healthy ? '✓' : '✗');
 console.log('Storage:', health.storage.healthy ? '✓' : '✗');
-console.log('Templates:', health.templates.healthy ? '✓' : '✗', `(${health.templates.count} loaded)`);
+console.log(
+  'Templates:',
+  health.templates.healthy ? '✓' : '✗',
+  `(${health.templates.count} loaded)`
+);
 ```
 
 ### Get Diagnostic Information

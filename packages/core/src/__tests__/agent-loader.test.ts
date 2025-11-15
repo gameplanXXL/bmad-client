@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AgentLoader, AgentLoadError, AgentParseError } from '../agent-loader.js';
+import { AgentLoader, AgentLoadError } from '../agent-loader.js';
 import { writeFile, mkdir, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -72,10 +72,10 @@ persona:
         expect(agent.agent.name).toBe('TestAgent');
         expect(agent.agent.title).toBe('Test Agent');
         expect(agent.agent.icon).toBe('🧪');
-        expect(agent.persona.role).toBe('Tester');
-        expect(agent.persona.core_principles).toHaveLength(3);
+        expect(agent.persona?.role).toBe('Tester');
+        expect(agent.persona?.core_principles).toHaveLength(3);
         expect(agent.commands).toContain('help');
-        expect(agent.dependencies.tasks).toContain('test-task.md');
+        expect(agent.dependencies?.tasks).toContain('test-task.md');
       } finally {
         // Cleanup
         await rm(tempDir, { recursive: true, force: true });
@@ -134,7 +134,7 @@ dependencies: {}
         expect(agent.agent.id).toBe('minimal');
         expect(agent.agent.customization).toBeUndefined();
         expect(agent.activation_instructions).toBeUndefined();
-        expect(agent.dependencies.tasks).toBeUndefined();
+        expect(agent.dependencies?.tasks).toBeUndefined();
       } finally {
         await rm(tempDir, { recursive: true, force: true });
       }
@@ -160,8 +160,8 @@ dependencies: {}
         const agents = await loader.loadFromDirectory(tempDir);
 
         expect(agents).toHaveLength(2);
-        expect(agents[0].agent.id).toMatch(/test-agent/);
-        expect(agents[1].agent.id).toMatch(/test-agent/);
+        expect(agents[0]?.agent.id).toMatch(/test-agent/);
+        expect(agents[1]?.agent.id).toMatch(/test-agent/);
       } finally {
         await rm(tempDir, { recursive: true, force: true });
       }
@@ -199,8 +199,8 @@ dependencies: {}
         expect(agent.agent.id).toBe('pm');
         expect(agent.agent.name).toBe('John');
         expect(agent.agent.title).toBe('Product Manager');
-        expect(agent.persona.role).toContain('Product');
-        expect(agent.commands.length).toBeGreaterThan(0);
+        expect(agent.persona?.role).toContain('Product');
+        expect(agent.commands?.length).toBeGreaterThan(0);
       } catch (error) {
         // This test may fail if bmad-export-author is not available
         // That's OK for now - we'll skip it

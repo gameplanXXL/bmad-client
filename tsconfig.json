@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "."
+  },
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/storage-gcs" },
+    { "path": "./packages/storage-supabase" },
+    { "path": "./packages/examples/express-api" },
+    { "path": "./packages/examples/standalone-script" }
+  ],
+  "files": [],
+  "include": [],
+  "exclude": ["node_modules", "dist", "**/dist", "**/*.test.ts"]
+}

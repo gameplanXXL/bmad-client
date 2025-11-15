@@ -30,8 +30,8 @@ import type {
   StorageListResult,
   SessionState,
   SessionListResult,
-} from '@bmad/client/storage';
-import type { Document } from '@bmad/client';
+  Document,
+} from '@bmad/client';
 
 /**
  * Configuration options for Supabase Storage Adapter
@@ -215,21 +215,6 @@ export class SupabaseStorageAdapter implements StorageAdapter {
   }
 
   /**
-   * Convert Supabase metadata to StorageMetadata format
-   */
-  private customMetadataToMetadata(customMetadata: Record<string, any>): StorageMetadata {
-    return {
-      sessionId: customMetadata.sessionId || 'unknown',
-      agentId: customMetadata.agentId || 'unknown',
-      command: customMetadata.command || 'unknown',
-      timestamp: parseInt(customMetadata.timestamp || '0', 10),
-      mimeType: customMetadata.mimeType,
-      size: customMetadata.size ? parseInt(customMetadata.size, 10) : undefined,
-      tags: customMetadata.tags ? JSON.parse(customMetadata.tags) : undefined,
-    };
-  }
-
-  /**
    * Save document to Supabase Storage bucket
    */
   async save(document: Document, metadata: StorageMetadata): Promise<StorageResult> {
@@ -240,7 +225,7 @@ export class SupabaseStorageAdapter implements StorageAdapter {
       const contentBlob = new Blob([document.content], { type: 'text/markdown' });
 
       // Upload file with metadata
-      const { data, error } = await this.client.storage
+      const { error } = await this.client.storage
         .from(this.bucketName)
         .upload(fullPath, contentBlob, {
           contentType: metadata.mimeType || 'text/markdown',
@@ -258,9 +243,7 @@ export class SupabaseStorageAdapter implements StorageAdapter {
       }
 
       // Get public URL if bucket is public
-      const { data: urlData } = this.client.storage
-        .from(this.bucketName)
-        .getPublicUrl(fullPath);
+      const { data: urlData } = this.client.storage.from(this.bucketName).getPublicUrl(fullPath);
 
       return {
         success: true,
@@ -409,6 +392,10 @@ export class SupabaseStorageAdapter implements StorageAdapter {
 
       const fileInfo = data[0];
 
+      if (!fileInfo) {
+        throw new SupabaseStorageError(`File info not available for: ${path}`, 'NOT_FOUND');
+      }
+
       // Supabase doesn't return custom metadata in list(), so we need to download to get it
       // For now, return basic metadata
       return {
@@ -416,7 +403,7 @@ export class SupabaseStorageAdapter implements StorageAdapter {
         agentId: 'unknown',
         command: 'unknown',
         timestamp: new Date(fileInfo.created_at).getTime(),
-        size: fileInfo.metadata?.size,
+        size: fileInfo.metadata ? fileInfo.metadata['size'] : undefined,
       };
     } catch (error) {
       if (error instanceof SupabaseStorageError) {
@@ -473,7 +460,7 @@ export class SupabaseStorageAdapter implements StorageAdapter {
               agentId: 'unknown',
               command: 'unknown',
               timestamp: new Date(file.created_at).getTime(),
-              size: file.metadata?.size,
+              size: file.metadata ? file.metadata['size'] : undefined,
             },
           };
         });
@@ -598,11 +585,11 @@ export class SupabaseStorageAdapter implements StorageAdapter {
    * Stores session state as JSON at: /sessions/{sessionId}/state.json
    */
   async saveSessionState(state: SessionState): Promise<StorageResult> {
-    const sessionPath = `/sessions/${state.sessionId}/state.json`;
+    const sessionPath = `/sessions/${state.id}/state.json`;
     const content = JSON.stringify(state, null, 2);
 
     const metadata: StorageMetadata = {
-      sessionId: state.sessionId,
+      sessionId: state.id,
       agentId: state.agentId || 'unknown',
       command: state.command || 'unknown',
       timestamp: Date.now(),
@@ -672,14 +659,14 @@ export class SupabaseStorageAdapter implements StorageAdapter {
               const state = await this.loadSessionState(sessionId);
 
               return {
-                sessionId: state.sessionId,
+                sessionId: state.id,
                 agentId: state.agentId || 'unknown',
                 command: state.command || 'unknown',
-                status: state.status || 'unknown',
-                createdAt: state.startedAt || Date.now(),
+                status: state.status,
+                createdAt: state.createdAt || Date.now(),
                 completedAt: state.completedAt,
-                documentCount: state.documents?.length || 0,
-                totalCost: state.cost?.total || 0,
+                documentCount: Object.keys(state.vfsFiles || {}).length,
+                totalCost: state.totalCost || 0,
               };
             } catch (err) {
               // Skip sessions that don't have valid state.json

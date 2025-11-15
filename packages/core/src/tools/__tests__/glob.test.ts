@@ -35,8 +35,8 @@ describe('FallbackToolExecutor - glob_pattern Tool', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.metadata?.count).toBe(4);
-      expect(result.metadata?.matches).toEqual([
+      expect(result.metadata?.['count']).toBe(4);
+      expect(result.metadata?.['matches']).toEqual([
         '/.bmad-core/agents/architect.md',
         '/.bmad-core/agents/dev.md',
         '/.bmad-core/agents/pm.md',
@@ -55,7 +55,7 @@ describe('FallbackToolExecutor - glob_pattern Tool', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.metadata?.count).toBe(4);
+      expect(result.metadata?.['count']).toBe(4);
     });
 
     it('should find all markdown files', async () => {
@@ -68,9 +68,9 @@ describe('FallbackToolExecutor - glob_pattern Tool', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.metadata?.count).toBe(7); // 4 agents + 1 task + 2 docs
-      expect(result.metadata?.matches).toContain('/.bmad-core/agents/pm.md');
-      expect(result.metadata?.matches).toContain('/docs/readme.md');
+      expect(result.metadata?.['count']).toBe(7); // 4 agents + 1 task + 2 docs
+      expect(result.metadata?.['matches']).toContain('/.bmad-core/agents/pm.md');
+      expect(result.metadata?.['matches']).toContain('/docs/readme.md');
     });
 
     it('should find all TypeScript files', async () => {
@@ -83,8 +83,8 @@ describe('FallbackToolExecutor - glob_pattern Tool', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.metadata?.count).toBe(2);
-      expect(result.metadata?.matches).toEqual(['/src/index.ts', '/src/utils/helper.ts']);
+      expect(result.metadata?.['count']).toBe(2);
+      expect(result.metadata?.['matches']).toEqual(['/src/index.ts', '/src/utils/helper.ts']);
     });
 
     it('should find all YAML files', async () => {
@@ -97,8 +97,8 @@ describe('FallbackToolExecutor - glob_pattern Tool', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.metadata?.count).toBe(2);
-      expect(result.metadata?.matches).toContain('/.bmad-core/templates/prd-tmpl.yaml');
+      expect(result.metadata?.['count']).toBe(2);
+      expect(result.metadata?.['matches']).toContain('/.bmad-core/templates/prd-tmpl.yaml');
     });
   });
 
@@ -113,7 +113,7 @@ describe('FallbackToolExecutor - glob_pattern Tool', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.metadata?.count).toBe(2);
+      expect(result.metadata?.['count']).toBe(2);
     });
 
     it('should support double wildcard for recursive search', async () => {
@@ -126,7 +126,7 @@ describe('FallbackToolExecutor - glob_pattern Tool', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.metadata?.count).toBe(5); // 4 agents + 1 task
+      expect(result.metadata?.['count']).toBe(5); // 4 agents + 1 task
     });
 
     it('should find files in src directory recursively', async () => {
@@ -139,7 +139,7 @@ describe('FallbackToolExecutor - glob_pattern Tool', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.metadata?.count).toBe(3);
+      expect(result.metadata?.['count']).toBe(3);
     });
   });
 
@@ -154,8 +154,8 @@ describe('FallbackToolExecutor - glob_pattern Tool', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.metadata?.count).toBe(2);
-      expect(result.metadata?.matches).toEqual(['/docs/guide.md', '/docs/readme.md']);
+      expect(result.metadata?.['count']).toBe(2);
+      expect(result.metadata?.['matches']).toEqual(['/docs/guide.md', '/docs/readme.md']);
     });
 
     it('should find files with relative path', async () => {
@@ -169,7 +169,7 @@ describe('FallbackToolExecutor - glob_pattern Tool', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.metadata?.count).toBe(4);
+      expect(result.metadata?.['count']).toBe(4);
     });
   });
 
@@ -184,8 +184,8 @@ describe('FallbackToolExecutor - glob_pattern Tool', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.metadata?.count).toBe(0);
-      expect(result.metadata?.matches).toEqual([]);
+      expect(result.metadata?.['count']).toBe(0);
+      expect(result.metadata?.['matches']).toEqual([]);
       expect(result.content).toContain('No files matching pattern');
     });
 
@@ -199,8 +199,8 @@ describe('FallbackToolExecutor - glob_pattern Tool', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.metadata?.count).toBe(1);
-      expect(result.metadata?.matches).toEqual(['/docs/readme.md']);
+      expect(result.metadata?.['count']).toBe(1);
+      expect(result.metadata?.['matches']).toEqual(['/docs/readme.md']);
     });
 
     it('should handle empty VFS', async () => {
@@ -215,7 +215,7 @@ describe('FallbackToolExecutor - glob_pattern Tool', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.metadata?.count).toBe(0);
+      expect(result.metadata?.['count']).toBe(0);
     });
 
     it('should sort results alphabetically', async () => {
@@ -228,7 +228,7 @@ describe('FallbackToolExecutor - glob_pattern Tool', () => {
       });
 
       expect(result.success).toBe(true);
-      const matches = result.metadata?.matches as string[];
+      const matches = result.metadata!['matches'] as string[];
       expect(matches[0]).toBe('/.bmad-core/agents/architect.md');
       expect(matches[1]).toBe('/.bmad-core/agents/dev.md');
       expect(matches[2]).toBe('/.bmad-core/agents/pm.md');
@@ -262,7 +262,7 @@ describe('FallbackToolExecutor - glob_pattern Tool', () => {
       expect(result.metadata).toHaveProperty('count');
       expect(result.metadata).toHaveProperty('matches');
       expect(result.metadata).toHaveProperty('pattern');
-      expect(result.metadata?.pattern).toBe('/**/*.yaml');
+      expect(result.metadata?.['pattern']).toBe('/**/*.yaml');
     });
   });
 
@@ -282,9 +282,9 @@ describe('FallbackToolExecutor - glob_pattern Tool', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.metadata?.count).toBe(1);
-      expect(result.metadata?.matches).toEqual(['/test/file.txt']);
-      expect(result.metadata?.matches).not.toContain('/test/.directory');
+      expect(result.metadata?.['count']).toBe(1);
+      expect(result.metadata?.['matches']).toEqual(['/test/file.txt']);
+      expect(result.metadata?.['matches']).not.toContain('/test/.directory');
     });
   });
 });

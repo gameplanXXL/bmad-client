@@ -10,7 +10,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Validate API key
-if (!process.env.ANTHROPIC_API_KEY) {
+if (!process.env['ANTHROPIC_API_KEY']) {
   console.error('❌ Error: ANTHROPIC_API_KEY not found in environment');
   console.error('Please create a .env file with your API key:');
   console.error('  ANTHROPIC_API_KEY=sk-ant-...');
@@ -45,7 +45,7 @@ async function main() {
   const bmadClient = new BmadClient({
     provider: {
       type: 'anthropic',
-      apiKey: process.env.ANTHROPIC_API_KEY!,
+      apiKey: process.env['ANTHROPIC_API_KEY']!,
     },
     storage: {
       type: 'memory', // Use in-memory storage for this example
@@ -94,7 +94,9 @@ async function main() {
 
   // Track costs in real-time
   session.on('costs', (costs) => {
-    console.log(`💰 Cost update: $${costs.totalCost.toFixed(4)} (${costs.totalInputTokens + costs.totalOutputTokens} tokens)`);
+    console.log(
+      `💰 Cost update: $${costs.totalCost.toFixed(4)} (${costs.totalInputTokens + costs.totalOutputTokens} tokens)`
+    );
   });
 
   // Execute session
@@ -117,10 +119,10 @@ async function main() {
   }
 
   console.log('\n💰 Total Cost:');
-  console.log(`   Input tokens:  ${result.costs.totalInputTokens.toLocaleString()}`);
-  console.log(`   Output tokens: ${result.costs.totalOutputTokens.toLocaleString()}`);
+  console.log(`   Input tokens:  ${result.costs.inputTokens.toLocaleString()}`);
+  console.log(`   Output tokens: ${result.costs.outputTokens.toLocaleString()}`);
   console.log(`   Total cost:    $${result.costs.totalCost.toFixed(4)}`);
-  console.log(`   API calls:     ${result.costs.apiCallCount}`);
+  console.log(`   API calls:     ${result.costs.apiCalls}`);
 
   console.log(`\n⏱️  Duration: ${(result.duration / 1000).toFixed(2)}s`);
 

@@ -24,8 +24,8 @@ describe('BmadClient', () => {
     });
 
     const config = client.getConfig();
-    expect(config.provider.type).toBe('anthropic');
-    expect(config.provider.model).toBe('claude-sonnet-4');
+    expect((config.provider as { type: string }).type).toBe('anthropic');
+    expect((config.provider as { model: string }).model).toBe('claude-sonnet-4');
   });
 
   it('should create session', async () => {

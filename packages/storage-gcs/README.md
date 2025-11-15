@@ -17,15 +17,15 @@ import { BmadClient } from '@bmad/client';
 import { GoogleCloudStorageAdapter } from '@bmad/storage-gcs';
 
 const storage = new GoogleCloudStorageAdapter({
-  bucketName: 'my-bmad-documents'
+  bucketName: 'my-bmad-documents',
 });
 
 const client = new BmadClient({
   provider: {
     type: 'anthropic',
-    apiKey: process.env.ANTHROPIC_API_KEY!
+    apiKey: process.env.ANTHROPIC_API_KEY!,
   },
-  storage: { type: 'custom', adapter: storage }
+  storage: { type: 'custom', adapter: storage },
 });
 ```
 
@@ -37,8 +37,8 @@ const storage = new GoogleCloudStorageAdapter({
   credentials: {
     client_email: 'service@project.iam.gserviceaccount.com',
     private_key: process.env.GCS_PRIVATE_KEY!,
-    project_id: 'my-project'
-  }
+    project_id: 'my-project',
+  },
 });
 ```
 
@@ -47,7 +47,7 @@ const storage = new GoogleCloudStorageAdapter({
 ```typescript
 const storage = new GoogleCloudStorageAdapter({
   bucketName: 'my-bmad-documents',
-  keyFilename: '/path/to/service-account-key.json'
+  keyFilename: '/path/to/service-account-key.json',
 });
 ```
 
@@ -55,14 +55,14 @@ const storage = new GoogleCloudStorageAdapter({
 
 ### GCSAdapterConfig
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `bucketName` | `string` | ✅ | GCS bucket name |
-| `credentials` | `object` | ❌ | Service account credentials (client_email, private_key, project_id) |
-| `keyFilename` | `string` | ❌ | Path to service account key file |
-| `projectId` | `string` | ❌ | GCP project ID (inferred from credentials if not provided) |
-| `basePath` | `string` | ❌ | Base path prefix for all documents (e.g., 'bmad-sessions/') |
-| `apiEndpoint` | `string` | ❌ | Custom API endpoint (for emulator testing) |
+| Option        | Type     | Required | Description                                                         |
+| ------------- | -------- | -------- | ------------------------------------------------------------------- |
+| `bucketName`  | `string` | ✅       | GCS bucket name                                                     |
+| `credentials` | `object` | ❌       | Service account credentials (client_email, private_key, project_id) |
+| `keyFilename` | `string` | ❌       | Path to service account key file                                    |
+| `projectId`   | `string` | ❌       | GCP project ID (inferred from credentials if not provided)          |
+| `basePath`    | `string` | ❌       | Base path prefix for all documents (e.g., 'bmad-sessions/')         |
+| `apiEndpoint` | `string` | ❌       | Custom API endpoint (for emulator testing)                          |
 
 ## Authentication Methods
 
@@ -72,11 +72,12 @@ Best for production deployments on GCP (Cloud Run, Cloud Functions, GKE).
 
 ```typescript
 const storage = new GoogleCloudStorageAdapter({
-  bucketName: 'my-bmad-documents'
+  bucketName: 'my-bmad-documents',
 });
 ```
 
 **Setup:**
+
 ```bash
 # For local development
 gcloud auth application-default login
@@ -95,12 +96,13 @@ const storage = new GoogleCloudStorageAdapter({
   credentials: {
     client_email: process.env.GCS_CLIENT_EMAIL!,
     private_key: process.env.GCS_PRIVATE_KEY!.replace(/\\n/g, '\n'),
-    project_id: process.env.GCP_PROJECT_ID!
-  }
+    project_id: process.env.GCP_PROJECT_ID!,
+  },
 });
 ```
 
 **Setup:**
+
 ```bash
 # Create service account
 gcloud iam service-accounts create bmad-storage \
@@ -123,7 +125,7 @@ Best for local development and testing.
 ```typescript
 const storage = new GoogleCloudStorageAdapter({
   bucketName: 'my-bmad-documents',
-  keyFilename: './service-account-key.json'
+  keyFilename: './service-account-key.json',
 });
 ```
 
@@ -168,16 +170,16 @@ import { GoogleCloudStorageAdapter } from '@bmad/storage-gcs';
 // Initialize storage
 const storage = new GoogleCloudStorageAdapter({
   bucketName: 'my-bmad-documents',
-  basePath: 'sessions' // All docs stored under sessions/
+  basePath: 'sessions', // All docs stored under sessions/
 });
 
 // Initialize client
 const client = new BmadClient({
   provider: {
     type: 'anthropic',
-    apiKey: process.env.ANTHROPIC_API_KEY!
+    apiKey: process.env.ANTHROPIC_API_KEY!,
   },
-  storage: { type: 'custom', adapter: storage }
+  storage: { type: 'custom', adapter: storage },
 });
 
 // Run session - documents auto-saved to GCS
@@ -198,7 +200,7 @@ await storage.save(
     sessionId: 'sess_123',
     agentId: 'architect',
     command: 'create-architecture',
-    timestamp: Date.now()
+    timestamp: Date.now(),
   }
 );
 
@@ -224,12 +226,12 @@ console.log(`Found ${result.documents.length} documents`);
 
 // List by session ID
 const sessionDocs = await storage.list({
-  sessionId: 'sess_123'
+  sessionId: 'sess_123',
 });
 
 // List by agent ID
 const pmDocs = await storage.list({
-  agentId: 'pm'
+  agentId: 'pm',
 });
 
 // Paginated listing
@@ -237,7 +239,7 @@ const page1 = await storage.list({ limit: 10 });
 if (page1.hasMore) {
   const page2 = await storage.list({
     limit: 10,
-    nextToken: page1.nextToken
+    nextToken: page1.nextToken,
   });
 }
 ```
@@ -285,11 +287,12 @@ try {
 const storage = new GoogleCloudStorageAdapter({
   bucketName: 'test-bucket',
   apiEndpoint: 'http://localhost:4443',
-  projectId: 'test-project'
+  projectId: 'test-project',
 });
 ```
 
 **Start Emulator:**
+
 ```bash
 # Using Docker
 docker run -d -p 4443:4443 fsouza/fake-gcs-server \
@@ -305,11 +308,13 @@ curl -X POST http://localhost:4443/storage/v1/b \
 ## Best Practices
 
 1. **Use Base Paths**: Organize documents with `basePath` option
+
    ```typescript
-   basePath: 'bmad-sessions' // gs://bucket/bmad-sessions/docs/prd.md
+   basePath: 'bmad-sessions'; // gs://bucket/bmad-sessions/docs/prd.md
    ```
 
 2. **Environment Variables**: Store credentials securely
+
    ```bash
    # .env
    GCS_BUCKET_NAME=my-bmad-documents
@@ -319,11 +324,13 @@ curl -X POST http://localhost:4443/storage/v1/b \
    ```
 
 3. **Lifecycle Policies**: Auto-delete old documents to save costs
+
    ```bash
    gsutil lifecycle set lifecycle.json gs://my-bucket
    ```
 
 4. **Health Checks**: Verify connectivity before critical operations
+
    ```typescript
    const health = await storage.healthCheck();
    if (health.status !== 'ok') {
@@ -342,11 +349,13 @@ curl -X POST http://localhost:4443/storage/v1/b \
 ## Pricing
 
 GCS charges for:
+
 - **Storage**: ~$0.020/GB/month (Standard storage, us-central1)
 - **Operations**: $0.004 per 10,000 writes, $0.0004 per 10,000 reads
 - **Network**: Egress charges may apply
 
 **Example Cost** (1000 sessions/month, 5KB/doc, 2 docs/session):
+
 - Storage: ~10GB = **$0.20/month**
 - Operations: 2000 writes + 500 reads = **$0.80/month**
 - **Total: ~$1/month**

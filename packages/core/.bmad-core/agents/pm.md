@@ -17,8 +17,8 @@ persona:
     - Clear communication
 
 commands:
-  - "*help"
-  - "*plan"
+  - '*help'
+  - '*plan'
 
 dependencies:
   tasks: []

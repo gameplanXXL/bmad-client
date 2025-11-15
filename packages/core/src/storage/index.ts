@@ -26,11 +26,6 @@ export {
   StorageError,
 } from './types.js';
 
-export {
-  InMemoryStorageAdapter,
-} from './memory-adapter.js';
+export { InMemoryStorageAdapter } from './memory-adapter.js';
 
-export {
-  GoogleCloudStorageAdapter,
-  type GCSConfig,
-} from './gcs-adapter.js';
+export { GoogleCloudStorageAdapter, type GCSConfig } from './gcs-adapter.js';

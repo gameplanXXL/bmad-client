@@ -34,7 +34,7 @@ describe('Agent Metadata Inspection via VFS Tools', () => {
     const agentPaths = globResult.content!.split('\n').filter(Boolean);
 
     expect(agentPaths.length).toBeGreaterThan(0);
-    expect(agentPaths.some(path => path.includes('pm.md'))).toBe(true);
+    expect(agentPaths.some((path) => path.includes('pm.md'))).toBe(true);
   });
 
   it('should read agent file and extract metadata', async () => {
@@ -61,7 +61,7 @@ describe('Agent Metadata Inspection via VFS Tools', () => {
     expect(agentPaths.length).toBeGreaterThan(0);
 
     // Read pm.md (has frontmatter format for testing)
-    const pmPath = agentPaths.find(p => p.includes('pm.md'))!;
+    const pmPath = agentPaths.find((p) => p.includes('pm.md'))!;
     expect(pmPath).toBeDefined();
 
     const readResult = await executor.executeTool({
@@ -80,20 +80,20 @@ describe('Agent Metadata Inspection via VFS Tools', () => {
 
     // Verify metadata structure
     expect(data).toHaveProperty('agent');
-    expect(data.agent).toHaveProperty('id');
-    expect(data.agent).toHaveProperty('title');
-    expect(data.agent).toHaveProperty('icon');
-    expect(data.agent).toHaveProperty('whenToUse');
+    expect(data['agent']).toHaveProperty('id');
+    expect(data['agent']).toHaveProperty('title');
+    expect(data['agent']).toHaveProperty('icon');
+    expect(data['agent']).toHaveProperty('whenToUse');
 
     expect(data).toHaveProperty('persona');
-    expect(data.persona).toHaveProperty('role');
-    expect(data.persona).toHaveProperty('style');
-    expect(data.persona).toHaveProperty('identity');
-    expect(data.persona).toHaveProperty('focus');
-    expect(data.persona).toHaveProperty('core_principles');
+    expect(data['persona']).toHaveProperty('role');
+    expect(data['persona']).toHaveProperty('style');
+    expect(data['persona']).toHaveProperty('identity');
+    expect(data['persona']).toHaveProperty('focus');
+    expect(data['persona']).toHaveProperty('core_principles');
 
     expect(data).toHaveProperty('commands');
-    expect(Array.isArray(data.commands)).toBe(true);
+    expect(Array.isArray(data['commands'])).toBe(true);
   });
 
   it('should extract all agent metadata from VFS', async () => {
@@ -119,7 +119,7 @@ describe('Agent Metadata Inspection via VFS Tools', () => {
     const agentPaths = globResult.content!.split('\n').filter(Boolean);
 
     // Filter to only pm.md which has frontmatter format
-    const frontmatterAgents = agentPaths.filter(p => p.includes('pm.md'));
+    const frontmatterAgents = agentPaths.filter((p) => p.includes('pm.md'));
 
     // Extract metadata from frontmatter agents
     const agentsMetadata = await Promise.all(
@@ -138,14 +138,14 @@ describe('Agent Metadata Inspection via VFS Tools', () => {
 
         return {
           path,
-          id: data.agent?.id,
-          title: data.agent?.title,
-          icon: data.agent?.icon,
-          whenToUse: data.agent?.whenToUse,
-          commands: data.commands,
+          id: data['agent']?.id,
+          title: data['agent']?.title,
+          icon: data['agent']?.icon,
+          whenToUse: data['agent']?.whenToUse,
+          commands: data['commands'],
           persona: {
-            role: data.persona?.role,
-            focus: data.persona?.focus,
+            role: data['persona']?.role,
+            focus: data['persona']?.focus,
           },
         };
       })

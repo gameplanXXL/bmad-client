@@ -341,13 +341,27 @@ describe('GoogleCloudStorageAdapter', () => {
           {
             name: 'doc1.md',
             getMetadata: vi.fn().mockResolvedValue([
-              { metadata: { sessionId: 'sess_123', agentId: 'pm', command: 'test', timestamp: '0' } },
+              {
+                metadata: {
+                  sessionId: 'sess_123',
+                  agentId: 'pm',
+                  command: 'test',
+                  timestamp: '0',
+                },
+              },
             ]),
           },
           {
             name: 'doc2.md',
             getMetadata: vi.fn().mockResolvedValue([
-              { metadata: { sessionId: 'sess_456', agentId: 'architect', command: 'test', timestamp: '0' } },
+              {
+                metadata: {
+                  sessionId: 'sess_456',
+                  agentId: 'architect',
+                  command: 'test',
+                  timestamp: '0',
+                },
+              },
             ]),
           },
         ],
@@ -369,13 +383,27 @@ describe('GoogleCloudStorageAdapter', () => {
           {
             name: 'doc1.md',
             getMetadata: vi.fn().mockResolvedValue([
-              { metadata: { sessionId: 'sess_123', agentId: 'pm', command: 'test', timestamp: '0' } },
+              {
+                metadata: {
+                  sessionId: 'sess_123',
+                  agentId: 'pm',
+                  command: 'test',
+                  timestamp: '0',
+                },
+              },
             ]),
           },
           {
             name: 'doc2.md',
             getMetadata: vi.fn().mockResolvedValue([
-              { metadata: { sessionId: 'sess_123', agentId: 'architect', command: 'test', timestamp: '0' } },
+              {
+                metadata: {
+                  sessionId: 'sess_123',
+                  agentId: 'architect',
+                  command: 'test',
+                  timestamp: '0',
+                },
+              },
             ]),
           },
         ],
@@ -404,7 +432,14 @@ describe('GoogleCloudStorageAdapter', () => {
           {
             name: 'doc1.md',
             getMetadata: vi.fn().mockResolvedValue([
-              { metadata: { sessionId: 'sess_123', agentId: 'pm', command: 'test', timestamp: '0' } },
+              {
+                metadata: {
+                  sessionId: 'sess_123',
+                  agentId: 'pm',
+                  command: 'test',
+                  timestamp: '0',
+                },
+              },
             ]),
           },
         ],

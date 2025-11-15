@@ -1,12 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  TaskExecutor,
-  TaskAuthorizationError,
-  TaskRequirementsMissingError,
-  type TaskSummary,
-  type TaskValidationResult,
-} from '../executor.js';
-import type { TaskDefinition, TaskMetadata } from '../schema.js';
+import { TaskExecutor } from '../executor.js';
+import type { TaskDefinition } from '../schema.js';
 
 describe('TaskExecutor', () => {
   let executor: TaskExecutor;

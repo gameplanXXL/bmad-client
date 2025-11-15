@@ -63,7 +63,7 @@ describe('invoke_agent tool', () => {
     const tools = toolExecutor.getTools();
 
     const invokeAgentTool = tools.find((t) => t.name === 'invoke_agent');
-    const agentIdProperty = invokeAgentTool?.input_schema.properties.agent_id as any;
+    const agentIdProperty = invokeAgentTool?.input_schema.properties['agent_id'] as any;
 
     expect(agentIdProperty.enum).toContain('pm');
     expect(agentIdProperty.enum).toContain('architect');
@@ -85,7 +85,7 @@ describe('invoke_agent tool', () => {
 
     const invokeAgentTool = tools.find((t) => t.name === 'invoke_agent');
 
-    expect(invokeAgentTool?.input_schema.properties.context).toBeDefined();
+    expect(invokeAgentTool?.input_schema.properties['context']).toBeDefined();
     expect(invokeAgentTool?.input_schema.required).not.toContain('context');
   });
 
@@ -97,7 +97,6 @@ describe('invoke_agent tool', () => {
     // 1. Mock agent definition for PM
     // 2. Mock Anthropic API responses
     // 3. Test full execution flow
-
     // Placeholder for future integration test
   });
 

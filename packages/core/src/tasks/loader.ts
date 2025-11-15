@@ -32,10 +32,7 @@ export class TaskLoader {
       if (data && Object.keys(data).length > 0) {
         const result = TaskMetadataSchema.safeParse(data);
         if (!result.success) {
-          throw new TaskValidationError(
-            `Invalid task metadata in ${filePath}`,
-            result.error
-          );
+          throw new TaskValidationError(`Invalid task metadata in ${filePath}`, result.error);
         }
         metadata = result.data;
       }

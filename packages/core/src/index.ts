@@ -11,7 +11,12 @@ export { SystemPromptGenerator } from './prompt-generator.js';
 export { AgentLoader, AgentLoadError, AgentParseError } from './agent-loader.js';
 export { AnthropicProvider, AnthropicProviderError } from './providers/anthropic.js';
 export { FallbackToolExecutor } from './tools/fallback-executor.js';
-export { CommandExecutor, CommandNotAllowedError, CommandTimeoutError, CONTENT_CREATION_WHITELIST } from './tools/command-executor.js';
+export {
+  CommandExecutor,
+  CommandNotAllowedError,
+  CommandTimeoutError,
+  CONTENT_CREATION_WHITELIST,
+} from './tools/command-executor.js';
 
 export type {
   BmadClientConfig,
@@ -19,6 +24,7 @@ export type {
   SessionOptions,
   SessionResult,
   SessionStatus,
+  SessionState,
   ConversationalOptions,
   ConversationTurn,
   ConversationResult,

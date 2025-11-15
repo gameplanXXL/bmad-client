@@ -19,11 +19,7 @@ describe('SystemPromptGenerator', () => {
       style: 'Analytical, data-driven',
       identity: 'Product Manager specialized in documentation',
       focus: 'Creating PRDs and product specs',
-      core_principles: [
-        'User-centric design',
-        'Data-driven decisions',
-        'Clear communication',
-      ],
+      core_principles: ['User-centric design', 'Data-driven decisions', 'Clear communication'],
     },
     commands: ['*help', '*create-prd', '*exit'],
     dependencies: {

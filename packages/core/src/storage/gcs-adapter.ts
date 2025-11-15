@@ -64,7 +64,6 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
   async initialize(): Promise<void> {
     try {
       // Dynamically import @google-cloud/storage
-      // @ts-ignore - Optional peer dependency
       const { Storage } = await import('@google-cloud/storage');
 
       // Create storage client
@@ -96,11 +95,7 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
         throw error;
       }
 
-      throw new StorageError(
-        'Failed to initialize Google Cloud Storage',
-        'INIT_ERROR',
-        error
-      );
+      throw new StorageError('Failed to initialize Google Cloud Storage', 'INIT_ERROR', error);
     }
   }
 
@@ -153,15 +148,10 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
   /**
    * Save multiple documents in batch
    */
-  async saveBatch(
-    documents: Document[],
-    metadata: StorageMetadata
-  ): Promise<StorageResult[]> {
+  async saveBatch(documents: Document[], metadata: StorageMetadata): Promise<StorageResult[]> {
     this.ensureInitialized();
 
-    const results = await Promise.allSettled(
-      documents.map((doc) => this.save(doc, metadata))
-    );
+    const results = await Promise.allSettled(documents.map((doc) => this.save(doc, metadata)));
 
     return results.map((result) =>
       result.status === 'fulfilled'
@@ -200,11 +190,7 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
         throw error;
       }
 
-      throw new StorageError(
-        `Failed to load document: ${path}`,
-        'LOAD_ERROR',
-        error
-      );
+      throw new StorageError(`Failed to load document: ${path}`, 'LOAD_ERROR', error);
     }
   }
 
@@ -242,11 +228,7 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
       await file.delete();
       return true;
     } catch (error) {
-      throw new StorageError(
-        `Failed to delete document: ${path}`,
-        'DELETE_ERROR',
-        error
-      );
+      throw new StorageError(`Failed to delete document: ${path}`, 'DELETE_ERROR', error);
     }
   }
 
@@ -337,11 +319,7 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
         throw error;
       }
 
-      throw new StorageError(
-        `Failed to get metadata: ${path}`,
-        'METADATA_ERROR',
-        error
-      );
+      throw new StorageError(`Failed to get metadata: ${path}`, 'METADATA_ERROR', error);
     }
   }
 
@@ -362,11 +340,7 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
 
       return url;
     } catch (error) {
-      throw new StorageError(
-        `Failed to generate signed URL: ${path}`,
-        'URL_ERROR',
-        error
-      );
+      throw new StorageError(`Failed to generate signed URL: ${path}`, 'URL_ERROR', error);
     }
   }
 
@@ -486,11 +460,7 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
         throw error;
       }
 
-      throw new StorageError(
-        `Failed to load session state: ${sessionId}`,
-        'LOAD_ERROR',
-        error
-      );
+      throw new StorageError(`Failed to load session state: ${sessionId}`, 'LOAD_ERROR', error);
     }
   }
 
@@ -593,11 +563,7 @@ export class GoogleCloudStorageAdapter implements StorageAdapter {
       await file.delete();
       return true;
     } catch (error) {
-      throw new StorageError(
-        `Failed to delete session: ${sessionId}`,
-        'DELETE_ERROR',
-        error
-      );
+      throw new StorageError(`Failed to delete session: ${sessionId}`, 'DELETE_ERROR', error);
     }
   }
 

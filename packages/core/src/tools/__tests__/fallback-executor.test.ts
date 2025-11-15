@@ -49,7 +49,7 @@ describe('FallbackToolExecutor', () => {
 
       expect(result.success).toBe(true);
       expect(result.content).toContain('File written');
-      expect(result.metadata?.size).toBeGreaterThan(0);
+      expect(result.metadata?.['size']).toBeGreaterThan(0);
     });
 
     it('should require absolute path', async () => {
@@ -112,7 +112,7 @@ describe('FallbackToolExecutor', () => {
 
       expect(result.success).toBe(true);
       expect(result.content).toBe('# Test Document\n\nContent here');
-      expect(result.metadata?.size).toBeGreaterThan(0);
+      expect(result.metadata?.['size']).toBeGreaterThan(0);
     });
 
     it('should return error for non-existent file', async () => {
@@ -258,7 +258,7 @@ describe('FallbackToolExecutor', () => {
       expect(result.content).toContain('/docs/file1.md');
       expect(result.content).toContain('/docs/file2.md');
       expect(result.content).not.toContain('/other/file3.md');
-      expect(result.metadata?.count).toBe(2);
+      expect(result.metadata?.['count']).toBe(2);
     });
 
     it('should return empty for non-existent directory', async () => {
@@ -270,7 +270,7 @@ describe('FallbackToolExecutor', () => {
 
       expect(result.success).toBe(true);
       expect(result.content).toContain('empty');
-      expect(result.metadata?.count).toBe(0);
+      expect(result.metadata?.['count']).toBe(0);
     });
 
     it('should handle trailing slash', async () => {
@@ -281,7 +281,7 @@ describe('FallbackToolExecutor', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.metadata?.count).toBe(2);
+      expect(result.metadata?.['count']).toBe(2);
     });
   });
 
@@ -437,8 +437,8 @@ describe('FallbackToolExecutor', () => {
         const docs = executor.getDocuments();
 
         expect(docs).toHaveLength(2);
-        expect(docs[0].path).toBe('/doc1.md');
-        expect(docs[0].content).toBe('Content 1');
+        expect(docs[0]?.path).toBe('/doc1.md');
+        expect(docs[0]?.content).toBe('Content 1');
       });
 
       it('should exclude directory markers', async () => {
@@ -456,7 +456,7 @@ describe('FallbackToolExecutor', () => {
         const docs = executor.getDocuments();
 
         expect(docs).toHaveLength(1);
-        expect(docs[0].path).toBe('/test/file.md');
+        expect(docs[0]?.path).toBe('/test/file.md');
       });
     });
 
@@ -633,10 +633,10 @@ describe('FallbackToolExecutor', () => {
 
         expect(result.success).toBe(true);
         expect(result.metadata).toBeDefined();
-        expect(result.metadata!.command).toBe('echo');
-        expect(result.metadata!.args).toEqual(['test']);
-        expect(result.metadata!.exitCode).toBe(0);
-        expect(result.metadata!.duration).toBeGreaterThan(0);
+        expect(result.metadata?.['command']).toBe('echo');
+        expect(result.metadata?.['args']).toEqual(['test']);
+        expect(result.metadata?.['exitCode']).toBe(0);
+        expect(result.metadata?.['duration']).toBeGreaterThan(0);
       });
 
       it('should support custom working directory', async () => {

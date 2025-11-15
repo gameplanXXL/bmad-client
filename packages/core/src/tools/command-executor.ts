@@ -93,14 +93,14 @@ export class CommandTimeoutError extends Error {
  * Default safe command whitelist (read-only operations)
  */
 const DEFAULT_WHITELIST = [
-  'echo',    // Print text
-  'cat',     // Display file contents
-  'ls',      // List directory
-  'pwd',     // Print working directory
-  'which',   // Locate command
-  'whoami',  // Print current user
-  'date',    // Print date/time
-  'uname',   // Print system info
+  'echo', // Print text
+  'cat', // Display file contents
+  'ls', // List directory
+  'pwd', // Print working directory
+  'which', // Locate command
+  'whoami', // Print current user
+  'date', // Print date/time
+  'uname', // Print system info
 ];
 
 /**
@@ -109,24 +109,24 @@ const DEFAULT_WHITELIST = [
  */
 export const CONTENT_CREATION_WHITELIST = [
   ...DEFAULT_WHITELIST,
-  'pandoc',        // Document converter
-  'pdflatex',      // LaTeX to PDF
-  'xelatex',       // XeLaTeX
-  'lualatex',      // LuaLaTeX
-  'bibtex',        // Bibliography processor
-  'makeindex',     // Index generator
-  'wkhtmltopdf',   // HTML to PDF
-  'convert',       // ImageMagick converter
-  'gs',            // Ghostscript
-  'inkscape',      // SVG processor
-  'gnuplot',       // Plotting
-  'graphviz',      // Graph visualization
-  'dot',           // GraphViz dot
-  'make',          // Build tool
-  'npm',           // Node package manager (for build scripts)
-  'node',          // Node.js runtime
-  'python3',       // Python interpreter
-  'python',        // Python interpreter
+  'pandoc', // Document converter
+  'pdflatex', // LaTeX to PDF
+  'xelatex', // XeLaTeX
+  'lualatex', // LuaLaTeX
+  'bibtex', // Bibliography processor
+  'makeindex', // Index generator
+  'wkhtmltopdf', // HTML to PDF
+  'convert', // ImageMagick converter
+  'gs', // Ghostscript
+  'inkscape', // SVG processor
+  'gnuplot', // Plotting
+  'graphviz', // Graph visualization
+  'dot', // GraphViz dot
+  'make', // Build tool
+  'npm', // Node package manager (for build scripts)
+  'node', // Node.js runtime
+  'python3', // Python interpreter
+  'python', // Python interpreter
 ];
 
 /**
@@ -275,8 +275,8 @@ export class CommandExecutor {
           error: timedOut
             ? `Command timed out after ${execConfig.timeout}ms`
             : exitCode !== 0
-            ? `Command exited with code ${exitCode}`
-            : undefined,
+              ? `Command exited with code ${exitCode}`
+              : undefined,
         });
       });
 

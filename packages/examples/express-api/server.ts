@@ -112,7 +112,7 @@ app.post('/api/sessions', async (req: Request, res: Response) => {
       console.log(`Session ${session.id} paused for question:`, question.question);
     });
 
-    session.on('completed', (result) => {
+    session.on('completed', (_result) => {
       console.log(`Session ${session.id} completed`);
       // Session can be cleaned up after some time
       setTimeout(() => {
@@ -398,7 +398,7 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // Error handler
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
   console.error('Unhandled error:', err);
   res.status(500).json({
     error: 'Internal server error',

@@ -6,13 +6,18 @@ const provider = MockScenarios.simpleConversation();
 console.log('Rules count:', provider.rules?.length || 'NO ACCESS TO RULES');
 
 // Try to send a message
-const testMessage = [{
-  role: 'user',
-  content: 'hello'
-}];
+const testMessage = [
+  {
+    role: 'user',
+    content: 'hello',
+  },
+];
 
-provider.sendMessage(testMessage, []).then(response => {
-  console.log('Response:', response);
-}).catch(err => {
-  console.error('Error:', err.message);
-});
+provider
+  .sendMessage(testMessage, [])
+  .then((response) => {
+    console.log('Response:', response);
+  })
+  .catch((err) => {
+    console.error('Error:', err.message);
+  });

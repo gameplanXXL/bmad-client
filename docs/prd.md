@@ -21,11 +21,11 @@ The primary insight from the Project Brief is that developers need more than jus
 
 ### Change Log
 
-| Date | Version | Description | Author |
-|------|---------|-------------|--------|
-| 2025-10-31 | 1.0 | Initial PRD creation | John (PM) |
-| 2025-10-31 | 1.1 | Added content-creation focus and CommandExecutor tool requirements | Winston (Architect) |
-| 2025-10-31 | 2.0 | Major revision: Implemented in-memory VFS for tool execution and session isolation | Winston (Architect) |
+| Date       | Version | Description                                                                        | Author              |
+| ---------- | ------- | ---------------------------------------------------------------------------------- | ------------------- |
+| 2025-10-31 | 1.0     | Initial PRD creation                                                               | John (PM)           |
+| 2025-10-31 | 1.1     | Added content-creation focus and CommandExecutor tool requirements                 | Winston (Architect) |
+| 2025-10-31 | 2.0     | Major revision: Implemented in-memory VFS for tool execution and session isolation | Winston (Architect) |
 
 ---
 
@@ -189,6 +189,7 @@ Code examples should be concise and practical, avoiding overly complex demonstra
 ### Target Device and Platforms
 
 **Backend environments only:**
+
 - Node.js 18+ on Linux, macOS, Windows
 - Serverless platforms: AWS Lambda, Google Cloud Functions, Vercel Functions, Cloudflare Workers (with state persistence)
 - Container environments: Docker, Kubernetes
@@ -241,11 +242,13 @@ The SDK is a client library, not a service. Applications import it as a dependen
 - **E2E Tests (5%):** Test full agent workflows against real LLM APIs (using test API keys with low-cost models)
 
 **Testing frameworks:**
+
 - **Vitest:** Fast, TypeScript-native test runner
 - **Nock or MSW:** HTTP mocking for LLM API calls in unit/integration tests
 - **In-memory storage adapter:** For testing without real GCS dependencies
 
 **CI/CD requirements:**
+
 - All tests must pass before merge to `main`
 - E2E tests run nightly (to avoid excessive API costs)
 - Code coverage reports published to README badge
@@ -508,7 +511,7 @@ so that **agents can perform their defined tasks (e.g., PM creating PRD)**.
 #### Acceptance Criteria
 
 1. `session.execute()` method sends initial user message to LLM via provider
-2. Initial message includes agent command (e.g., "*create-prd") and any user-provided context
+2. Initial message includes agent command (e.g., "\*create-prd") and any user-provided context
 3. Session includes agent's system prompt (persona, instructions) from agent definition
 4. LLM response is added to conversation history
 5. If LLM response is complete (no tool calls), session status changes to `completed`
@@ -705,7 +708,7 @@ so that **I can create PRDs, architecture docs following consistent formats**.
 6. Generator renders final document as markdown with template-defined structure
 7. Unit tests verify document generation from test template fixtures
 8. Generated documents match expected format and structure
-9. Generator integrates with session—agent commands like "*create-prd" trigger document generation
+9. Generator integrates with session—agent commands like "\*create-prd" trigger document generation
 
 ### Story 5.4: Task Workflow Parsing & Execution
 
@@ -1299,9 +1302,9 @@ so that **I can see the SDK in action and adapt examples to my needs**.
 3. Example: Standalone script creating PRD with user prompts
 4. Example: AWS Lambda function running BMad agent on event trigger
 5. Example: Custom storage adapter implementation (local filesystem)
-7. Each example includes: README with setup instructions, complete working code, demonstration of key features
-8. Examples are tested in CI/CD to ensure they work
-9. Examples are published in `packages/examples/` and on documentation site
+6. Each example includes: README with setup instructions, complete working code, demonstration of key features
+7. Examples are tested in CI/CD to ensure they work
+8. Examples are published in `packages/examples/` and on documentation site
 
 ### Story 10.7: Migration & Upgrade Guides
 

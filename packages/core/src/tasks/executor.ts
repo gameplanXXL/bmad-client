@@ -287,9 +287,7 @@ export class TaskRequirementsMissingError extends Error {
     public taskId: string,
     public missing: string[]
   ) {
-    super(
-      `Task '${taskId}' cannot be executed - missing requirements: ${missing.join(', ')}`
-    );
+    super(`Task '${taskId}' cannot be executed - missing requirements: ${missing.join(', ')}`);
     this.name = 'TaskRequirementsMissingError';
   }
 }

@@ -75,15 +75,15 @@ await storage.initialize();
 
 ### SupabaseStorageAdapterConfig
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `supabaseUrl` | `string` | ✅ | Supabase project URL |
-| `supabaseKey` | `string` | ✅ | Service role key or anon key |
-| `bucketName` | `string` | ✅ | Storage bucket name |
-| `basePath` | `string` | ❌ | Base path prefix for all documents |
-| `autoCreateBucket` | `boolean` | ❌ | Create bucket if it doesn't exist (default: `false`) |
-| `bucketConfig` | `object` | ❌ | Bucket configuration (see below) |
-| `headers` | `Record<string, string>` | ❌ | Custom headers for Supabase client |
+| Option             | Type                     | Required | Description                                          |
+| ------------------ | ------------------------ | -------- | ---------------------------------------------------- |
+| `supabaseUrl`      | `string`                 | ✅       | Supabase project URL                                 |
+| `supabaseKey`      | `string`                 | ✅       | Service role key or anon key                         |
+| `bucketName`       | `string`                 | ✅       | Storage bucket name                                  |
+| `basePath`         | `string`                 | ❌       | Base path prefix for all documents                   |
+| `autoCreateBucket` | `boolean`                | ❌       | Create bucket if it doesn't exist (default: `false`) |
+| `bucketConfig`     | `object`                 | ❌       | Bucket configuration (see below)                     |
+| `headers`          | `Record<string, string>` | ❌       | Custom headers for Supabase client                   |
 
 ### Bucket Configuration
 
@@ -289,7 +289,9 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-const { data: { user } } = await supabase.auth.getUser();
+const {
+  data: { user },
+} = await supabase.auth.getUser();
 
 const storage = new SupabaseStorageAdapter({
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -343,30 +345,30 @@ try {
 
 ### Error Codes
 
-| Code | Description |
-|------|-------------|
-| `INIT_ERROR` | Failed to initialize storage |
-| `BUCKET_NOT_FOUND` | Bucket does not exist |
-| `BUCKET_CREATE_ERROR` | Failed to create bucket |
-| `NOT_FOUND` | Document not found |
-| `LOAD_ERROR` | Failed to load document |
-| `DELETE_ERROR` | Failed to delete document |
-| `METADATA_ERROR` | Failed to get metadata |
-| `LIST_ERROR` | Failed to list documents |
-| `SESSION_NOT_FOUND` | Session state not found |
+| Code                  | Description                  |
+| --------------------- | ---------------------------- |
+| `INIT_ERROR`          | Failed to initialize storage |
+| `BUCKET_NOT_FOUND`    | Bucket does not exist        |
+| `BUCKET_CREATE_ERROR` | Failed to create bucket      |
+| `NOT_FOUND`           | Document not found           |
+| `LOAD_ERROR`          | Failed to load document      |
+| `DELETE_ERROR`        | Failed to delete document    |
+| `METADATA_ERROR`      | Failed to get metadata       |
+| `LIST_ERROR`          | Failed to list documents     |
+| `SESSION_NOT_FOUND`   | Session state not found      |
 
 ## Comparison with Google Cloud Storage
 
-| Feature | Supabase Storage | Google Cloud Storage |
-|---------|------------------|---------------------|
-| **Setup** | ✅ Simple (URL + Key) | ⚠️ Complex (Service Account) |
-| **Pricing** | ✅ Free tier: 1GB | ⚠️ Pay-as-you-go |
-| **Authentication** | ✅ Built-in Auth | ❌ IAM setup required |
-| **RLS Support** | ✅ Yes | ❌ No |
-| **CDN** | ✅ Automatic | ✅ Available |
-| **Signed URLs** | ✅ Yes | ✅ Yes |
-| **Batch Upload** | ⚠️ Parallel only | ✅ Native API |
-| **Custom Metadata** | ⚠️ Limited | ✅ Full support |
+| Feature             | Supabase Storage      | Google Cloud Storage         |
+| ------------------- | --------------------- | ---------------------------- |
+| **Setup**           | ✅ Simple (URL + Key) | ⚠️ Complex (Service Account) |
+| **Pricing**         | ✅ Free tier: 1GB     | ⚠️ Pay-as-you-go             |
+| **Authentication**  | ✅ Built-in Auth      | ❌ IAM setup required        |
+| **RLS Support**     | ✅ Yes                | ❌ No                        |
+| **CDN**             | ✅ Automatic          | ✅ Available                 |
+| **Signed URLs**     | ✅ Yes                | ✅ Yes                       |
+| **Batch Upload**    | ⚠️ Parallel only      | ✅ Native API                |
+| **Custom Metadata** | ⚠️ Limited            | ✅ Full support              |
 
 ## Performance Considerations
 
@@ -453,5 +455,6 @@ MIT
 ## Support
 
 For issues and questions:
+
 - [GitHub Issues](https://github.com/bmad/bmad-client/issues)
 - [Supabase Documentation](https://supabase.com/docs/guides/storage)

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ConversationalSession } from '../conversational-session.js';
 import { BmadClient } from '../client.js';
-import type { BmadClientConfig, ConversationTurn } from '../types.js';
+import type { BmadClientConfig } from '../types.js';
 
 // Mock BmadClient
 const createMockClient = (): BmadClient => {
@@ -193,7 +193,8 @@ describe('ConversationalSession', () => {
       vi.spyOn(conversation as any, 'loadTemplatesIntoVFS').mockResolvedValue(undefined);
 
       const mockProvider = {
-        sendMessage: vi.fn()
+        sendMessage: vi
+          .fn()
           .mockResolvedValueOnce({
             message: { role: 'assistant', content: 'First response', toolCalls: [] },
             usage: { inputTokens: 100, outputTokens: 50 },
@@ -225,8 +226,8 @@ describe('ConversationalSession', () => {
 
       const history = conversation.getHistory();
       expect(history).toHaveLength(2);
-      expect(history[0].userMessage).toBe('Message 1');
-      expect(history[1].userMessage).toBe('Message 2');
+      expect(history[0]?.userMessage).toBe('Message 1');
+      expect(history[1]?.userMessage).toBe('Message 2');
     });
   });
 
@@ -246,7 +247,7 @@ describe('ConversationalSession', () => {
 
       // Create conversation with low cost limit
       const limitedConv = new ConversationalSession(client, 'pm', {
-        costLimit: 0.10, // $0.10 limit
+        costLimit: 0.1, // $0.10 limit
       });
 
       limitedConv.on('cost-warning', costWarningSpy);
@@ -305,7 +306,7 @@ describe('ConversationalSession', () => {
           usage: { inputTokens: 20000, outputTokens: 10000 },
           stopReason: 'end_turn',
         }),
-        calculateCost: vi.fn().mockReturnValue(0.10), // Over limit
+        calculateCost: vi.fn().mockReturnValue(0.1), // Over limit
         getModelInfo: vi.fn().mockReturnValue({
           name: 'claude-sonnet-4',
           maxTokens: 200000,
@@ -341,15 +342,25 @@ describe('ConversationalSession', () => {
 
       // Mock provider to write files
       const mockProvider = {
-        sendMessage: vi.fn()
+        sendMessage: vi
+          .fn()
           .mockResolvedValueOnce({
             message: {
               role: 'assistant',
               content: [
-                { type: 'tool_use', id: 'tool_1', name: 'write_file', input: { file_path: '/docs/doc1.md', content: 'Doc 1' } },
+                {
+                  type: 'tool_use',
+                  id: 'tool_1',
+                  name: 'write_file',
+                  input: { file_path: '/docs/doc1.md', content: 'Doc 1' },
+                },
               ],
               toolCalls: [
-                { id: 'tool_1', name: 'write_file', input: { file_path: '/docs/doc1.md', content: 'Doc 1' } },
+                {
+                  id: 'tool_1',
+                  name: 'write_file',
+                  input: { file_path: '/docs/doc1.md', content: 'Doc 1' },
+                },
               ],
             },
             usage: { inputTokens: 100, outputTokens: 50 },
@@ -413,7 +424,7 @@ describe('ConversationalSession', () => {
       await conversation.send('Create PRD');
 
       // Wait a bit for async processing
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(questionSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -485,7 +496,7 @@ describe('ConversationalSession', () => {
       const mockProvider = {
         sendMessage: vi.fn().mockImplementation(() => {
           // Slow response
-          return new Promise(resolve => {
+          return new Promise((resolve) => {
             setTimeout(() => {
               resolve({
                 message: { role: 'assistant', content: 'Response', toolCalls: [] },
@@ -524,7 +535,7 @@ describe('ConversationalSession', () => {
       await conversation.send('Test');
 
       // Wait for async error
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(errorSpy).toHaveBeenCalled();
     });
@@ -557,7 +568,7 @@ describe('ConversationalSession', () => {
 
       await conversation.send('Test');
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(errorSpy).toHaveBeenCalled();
     });
@@ -593,7 +604,9 @@ describe('ConversationalSession', () => {
       await conversation.send('Test');
 
       // Wait with short timeout
-      await expect(conversation.waitForCompletion(100)).rejects.toThrow('Timeout waiting for completion');
+      await expect(conversation.waitForCompletion(100)).rejects.toThrow(
+        'Timeout waiting for completion'
+      );
     });
   });
 });

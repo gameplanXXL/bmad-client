@@ -45,9 +45,7 @@ export class AgentLoader {
       const files = await readdir(dirPath);
       const mdFiles = files.filter((f) => extname(f) === '.md');
 
-      const agents = await Promise.all(
-        mdFiles.map((file) => this.loadAgent(join(dirPath, file)))
-      );
+      const agents = await Promise.all(mdFiles.map((file) => this.loadAgent(join(dirPath, file))));
 
       return agents;
     } catch (error) {
@@ -128,7 +126,9 @@ export class AgentLoader {
       }
     } catch (error) {
       if (error instanceof Error) {
-        throw new AgentLoadError(`Failed to discover expansion packs in ${basePath}: ${error.message}`);
+        throw new AgentLoadError(
+          `Failed to discover expansion packs in ${basePath}: ${error.message}`
+        );
       }
       throw error;
     }

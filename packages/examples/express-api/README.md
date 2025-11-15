@@ -50,6 +50,7 @@ curl http://localhost:3000/health
 ```
 
 Response:
+
 ```json
 {
   "healthy": true,
@@ -86,6 +87,7 @@ curl -X POST http://localhost:3000/sessions \
 ```
 
 Response:
+
 ```json
 {
   "sessionId": "sess_123_abc",
@@ -105,6 +107,7 @@ curl -X POST http://localhost:3000/sessions/sess_123_abc/execute
 ```
 
 Response:
+
 ```json
 {
   "sessionId": "sess_123_abc",
@@ -142,6 +145,7 @@ curl http://localhost:3000/sessions?limit=10&offset=0
 ```
 
 Response:
+
 ```json
 {
   "sessions": [
@@ -190,6 +194,7 @@ curl -X POST http://localhost:3000/agents/pm/run \
 ```
 
 Response includes full documents:
+
 ```json
 {
   "sessionId": "sess_456_def",
@@ -230,6 +235,7 @@ All endpoints return consistent error responses:
 ```
 
 Status codes:
+
 - `400` - Bad Request (missing/invalid parameters)
 - `404` - Not Found (session doesn't exist)
 - `500` - Internal Server Error

@@ -4,9 +4,17 @@
  * Uses a predefined map of prompts -> responses to simulate LLM behavior
  */
 
-import type { LLMProvider, Message, Tool, ProviderResponse, ProviderOptions, ModelInfo } from '../types.js';
+import type {
+  LLMProvider,
+  Message,
+  Tool,
+  ProviderResponse,
+  ProviderOptions,
+  ModelInfo,
+} from '../types.js';
 
 interface MockResponse {
+  text?: string;
   content: string | any[];
   toolCalls?: Array<{ id: string; name: string; input: Record<string, unknown> }>;
   stopReason?: 'end_turn' | 'tool_use' | 'max_tokens';
@@ -99,8 +107,8 @@ export class MockLLMProvider implements LLMProvider {
 
   async sendMessage(
     messages: Message[],
-    tools: Tool[],
-    options?: ProviderOptions
+    _tools: Tool[],
+    _options?: ProviderOptions
   ): Promise<ProviderResponse> {
     this.callCount++;
 
@@ -126,6 +134,7 @@ export class MockLLMProvider implements LLMProvider {
   private findMatchingRule(messages: Message[]): MockResponse | null {
     for (let i = 0; i < this.rules.length; i++) {
       const rule = this.rules[i];
+      if (!rule) continue;
 
       // Skip if rule was already used and is marked as 'once'
       if (rule.once && this.usedRules.has(i)) {
@@ -171,8 +180,8 @@ export class MockLLMProvider implements LLMProvider {
 
   private getLastUserMessage(messages: Message[]): string {
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === 'user') {
-        const content = messages[i].content;
+      if (messages[i]?.role === 'user') {
+        const content = messages[i]?.content;
         if (typeof content === 'string') {
           return content;
         }
@@ -381,11 +390,14 @@ export const MockScenarios = {
         response: {
           content: [
             { type: 'text', text: 'Reading and updating document...' },
-            { type: 'tool_use', id: 'tool_2', name: 'read_file', input: { file_path: '/docs/doc.md' } },
+            {
+              type: 'tool_use',
+              id: 'tool_2',
+              name: 'read_file',
+              input: { file_path: '/docs/doc.md' },
+            },
           ],
-          toolCalls: [
-            { id: 'tool_2', name: 'read_file', input: { file_path: '/docs/doc.md' } },
-          ],
+          toolCalls: [{ id: 'tool_2', name: 'read_file', input: { file_path: '/docs/doc.md' } }],
           stopReason: 'tool_use',
           inputTokens: 120,
           outputTokens: 60,

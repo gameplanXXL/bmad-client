@@ -42,9 +42,7 @@ describe('AnthropicProvider', () => {
     });
 
     it('should throw error for unknown model', () => {
-      expect(() => new AnthropicProvider('key', 'invalid-model')).toThrow(
-        AnthropicProviderError
-      );
+      expect(() => new AnthropicProvider('key', 'invalid-model')).toThrow(AnthropicProviderError);
     });
 
     it('should default to claude-sonnet-4', () => {
@@ -191,9 +189,7 @@ describe('AnthropicProvider', () => {
     it('should throw AnthropicProviderError on API error', async () => {
       mockCreate.mockRejectedValue(new Error('API Error'));
 
-      await expect(provider.sendMessage(messages, tools)).rejects.toThrow(
-        AnthropicProviderError
-      );
+      await expect(provider.sendMessage(messages, tools)).rejects.toThrow(AnthropicProviderError);
     });
   });
 

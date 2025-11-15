@@ -58,10 +58,12 @@ Integration tests for `invoke_agent` verify the **complete workflow** of parent-
 ### Mocking Strategy
 
 **What We Mock:**
+
 - ✅ Anthropic API responses (`@anthropic-ai/sdk`)
 - ✅ Agent definition files (via fixtures)
 
 **What We DON'T Mock (Real Implementation):**
+
 - ❌ BmadClient
 - ❌ BmadSession
 - ❌ FallbackToolExecutor
@@ -80,6 +82,7 @@ Integration tests for `invoke_agent` verify the **complete workflow** of parent-
 **Purpose:** Verify basic parent → child invocation works end-to-end.
 
 **Scenario:**
+
 ```
 Orchestrator starts
   ↓
@@ -98,16 +101,16 @@ Verify:
 ```
 
 **Key Assertions:**
+
 ```typescript
 expect(result.status).toBe('completed');
 expect(result.costs.childSessions).toHaveLength(1);
 expect(result.costs.childSessions![0].agent).toBe('pm');
-expect(result.documents).toContainEqual(
-  expect.objectContaining({ path: '/docs/prd.md' })
-);
+expect(result.documents).toContainEqual(expect.objectContaining({ path: '/docs/prd.md' }));
 ```
 
 **Mock Structure:**
+
 1. Orchestrator decides to invoke PM (tool_use)
 2. PM writes document (tool_use: write_file)
 3. PM completes (end_turn)
@@ -120,6 +123,7 @@ expect(result.documents).toContainEqual(
 **Purpose:** Verify orchestrator can invoke multiple agents sequentially.
 
 **Scenario:**
+
 ```
 Orchestrator
   ↓
@@ -135,25 +139,21 @@ Verify:
 ```
 
 **Key Assertions:**
+
 ```typescript
 expect(result.costs.childSessions).toHaveLength(2);
 expect(result.costs.childSessions![0].agent).toBe('pm');
 expect(result.costs.childSessions![1].agent).toBe('architect');
 
-expect(result.documents).toContainEqual(
-  expect.objectContaining({ path: '/docs/prd.md' })
-);
-expect(result.documents).toContainEqual(
-  expect.objectContaining({ path: '/docs/architecture.md' })
-);
+expect(result.documents).toContainEqual(expect.objectContaining({ path: '/docs/prd.md' }));
+expect(result.documents).toContainEqual(expect.objectContaining({ path: '/docs/architecture.md' }));
 
-const totalChildCost = result.costs.childSessions!.reduce(
-  (sum, child) => sum + child.totalCost, 0
-);
+const totalChildCost = result.costs.childSessions!.reduce((sum, child) => sum + child.totalCost, 0);
 expect(result.costs.totalCost).toBeGreaterThanOrEqual(totalChildCost);
 ```
 
 **Mock Structure:**
+
 1. Orchestrator invokes PM
 2. PM creates PRD
 3. PM completes
@@ -169,6 +169,7 @@ expect(result.costs.totalCost).toBeGreaterThanOrEqual(totalChildCost);
 **Purpose:** Verify cost limits are enforced across parent+child hierarchy.
 
 **Scenario:**
+
 ```
 Parent has $1.00 limit
   ↓
@@ -182,21 +183,24 @@ Verify:
 ```
 
 **Key Assertions:**
+
 ```typescript
 const session = await client.startAgent('orchestrator', 'task', {
-  costLimit: 1.0
+  costLimit: 1.0,
 });
 
 await expect(session.execute()).rejects.toThrow(/Cost limit exceeded/);
 ```
 
 **Mock Structure:**
+
 1. Orchestrator invokes PM (low token usage)
 2. PM uses extremely high tokens (exceeds limit)
 3. Should throw error before completion
 
 **Implementation Detail:**
 Cost tracking happens in `session.addChildSessionCost()`:
+
 ```typescript
 if (this.options.costLimit && totalCost >= this.options.costLimit) {
   throw new Error(`Cost limit exceeded: $${totalCost}`);
@@ -210,6 +214,7 @@ if (this.options.costLimit && totalCost >= this.options.costLimit) {
 **Purpose:** Verify context is passed from parent to child sessions.
 
 **Scenario:**
+
 ```
 Orchestrator invokes PM with context:
 {
@@ -224,6 +229,7 @@ Verify context was captured during session creation
 ```
 
 **Key Assertions:**
+
 ```typescript
 // Spy on session creation
 const capturedContext: any[] = [];
@@ -233,19 +239,20 @@ vi.spyOn(client, 'startAgent').mockImplementation((agentId, cmd, opts) => {
 });
 
 // After execution
-const pmContext = capturedContext.find(ctx => ctx.project_type === 'mobile app');
+const pmContext = capturedContext.find((ctx) => ctx.project_type === 'mobile app');
 expect(pmContext.target_platform).toBe('iOS');
 ```
 
 **Implementation Detail:**
 Context passing in `FallbackToolExecutor.invokeAgent()`:
+
 ```typescript
 const childSession = await client.startAgent(agentId, command, {
   context: {
-    ...context,  // User-provided context
+    ...context, // User-provided context
     parentSessionId: parentSession.id,
     isSubAgent: true,
-  }
+  },
 });
 ```
 
@@ -256,6 +263,7 @@ const childSession = await client.startAgent(agentId, command, {
 **Purpose:** Verify child documents are accessible in parent VFS.
 
 **Scenario:**
+
 ```
 PM creates /docs/prd.md in child VFS
   ↓
@@ -269,27 +277,31 @@ Verify no errors
 ```
 
 **Key Assertions:**
+
 ```typescript
 // Orchestrator reads document after PM completion
 mockAnthropicResponses.push({
-  content: [{
-    type: 'tool_use',
-    name: 'read_file',
-    input: { file_path: '/docs/prd.md' }
-  }],
-  stop_reason: 'tool_use'
+  content: [
+    {
+      type: 'tool_use',
+      name: 'read_file',
+      input: { file_path: '/docs/prd.md' },
+    },
+  ],
+  stop_reason: 'tool_use',
 });
 
 expect(result.documents).toContainEqual(
   expect.objectContaining({
     path: '/docs/prd.md',
-    content: expect.stringContaining('Build awesome product')
+    content: expect.stringContaining('Build awesome product'),
   })
 );
 ```
 
 **Implementation Detail:**
 Document merging in `FallbackToolExecutor.invokeAgent()`:
+
 ```typescript
 for (const doc of result.documents) {
   parentToolExecutor.vfs.set(doc.path, {
@@ -306,6 +318,7 @@ for (const doc of result.documents) {
 **Purpose:** Verify parent handles child session failures gracefully.
 
 **Scenario:**
+
 ```
 Orchestrator invokes non-existent agent
   ↓
@@ -322,6 +335,7 @@ Verify:
 ```
 
 **Key Assertions:**
+
 ```typescript
 const session = await client.startAgent('orchestrator', 'invoke bad agent');
 
@@ -334,11 +348,12 @@ expect(result.costs.childSessions).toBeUndefined();
 
 **Implementation Detail:**
 Error handling in `FallbackToolExecutor.invokeAgent()`:
+
 ```typescript
 if (result.status !== 'completed') {
   return {
     success: false,
-    error: `Sub-agent failed: ${result.error?.message}`
+    error: `Sub-agent failed: ${result.error?.message}`,
   };
 }
 ```
@@ -350,6 +365,7 @@ if (result.status !== 'completed') {
 **Purpose:** Verify token counting across parent+child is accurate.
 
 **Scenario:**
+
 ```
 Parent (Orchestrator):
   - Call 1: 1000 input, 100 output
@@ -367,6 +383,7 @@ Expected Final:
 ```
 
 **Key Assertions:**
+
 ```typescript
 expect(result.costs.inputTokens).toBe(3700);
 expect(result.costs.outputTokens).toBe(900);
@@ -380,6 +397,7 @@ expect(result.costs.totalCost).toBeCloseTo(expectedCost, 4);
 
 **Why This Matters:**
 Accurate token tracking is critical for:
+
 - Billing transparency
 - Cost limit enforcement
 - Performance optimization
@@ -534,6 +552,7 @@ costLimit: 0.20  // Safe margin
 **Cause:** Document merging didn't work, or child session didn't create the document.
 
 **Debug:**
+
 ```typescript
 // Add logging in test
 session.on('completed', (result) => {
@@ -543,12 +562,14 @@ session.on('completed', (result) => {
 
 // Check mock responses - did child actually write the file?
 mockAnthropicResponses.push({
-  content: [{
-    type: 'tool_use',
-    name: 'write_file',  // ← Verify this exists
-    input: { file_path: '/docs/prd.md', content: '...' }
-  }],
-  stop_reason: 'tool_use'
+  content: [
+    {
+      type: 'tool_use',
+      name: 'write_file', // ← Verify this exists
+      input: { file_path: '/docs/prd.md', content: '...' },
+    },
+  ],
+  stop_reason: 'tool_use',
 });
 ```
 
@@ -557,6 +578,7 @@ mockAnthropicResponses.push({
 **Cause:** Something threw an error during execution.
 
 **Debug:**
+
 ```typescript
 // Wrap in try-catch
 try {
@@ -580,6 +602,7 @@ try {
 ### 1. Test Independence
 
 **Do:**
+
 ```typescript
 beforeEach(() => {
   apiCallCount = 0;
@@ -589,19 +612,22 @@ beforeEach(() => {
 ```
 
 **Don't:**
+
 ```typescript
 // Sharing state between tests
-let sharedClient;  // ❌ Tests affect each other
+let sharedClient; // ❌ Tests affect each other
 ```
 
 ### 2. Clear Test Names
 
 **Do:**
+
 ```typescript
 it('should invoke PM agent and receive result', async () => {
 ```
 
 **Don't:**
+
 ```typescript
 it('test 1', async () => {  // ❌ Unclear what's being tested
 ```
@@ -609,6 +635,7 @@ it('test 1', async () => {  // ❌ Unclear what's being tested
 ### 3. Verify Multiple Aspects
 
 **Do:**
+
 ```typescript
 // Verify completion
 expect(result.status).toBe('completed');
@@ -626,13 +653,15 @@ expect(result.costs.totalCost).toBeGreaterThan(0);
 ### 4. Use Descriptive Mock Data
 
 **Do:**
+
 ```typescript
-content: '# PRD\n\n## Goals\nBuild awesome product'  // ✅ Realistic
+content: '# PRD\n\n## Goals\nBuild awesome product'; // ✅ Realistic
 ```
 
 **Don't:**
+
 ```typescript
-content: 'x'  // ❌ Minimal, hard to debug
+content: 'x'; // ❌ Minimal, hard to debug
 ```
 
 ### 5. Test Edge Cases
@@ -681,6 +710,7 @@ it('should stream child session progress to parent', async () => {
 ## Summary
 
 **Integration tests verify:**
+
 - ✅ Sub-agent invocation works end-to-end
 - ✅ Cost tracking across parent+child
 - ✅ Document merging into parent VFS

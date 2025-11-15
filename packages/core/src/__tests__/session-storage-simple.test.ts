@@ -4,11 +4,8 @@ import { InMemoryStorageAdapter } from '../storage/memory-adapter.js';
 
 describe('Session Storage - Simple Integration', () => {
   let client: BmadClient;
-  let storage: InMemoryStorageAdapter;
 
   beforeEach(async () => {
-    storage = new InMemoryStorageAdapter();
-
     client = new BmadClient({
       provider: {
         type: 'anthropic',

@@ -20,11 +20,13 @@ Simple standalone Node.js script demonstrating BMad Client usage.
 ## Setup
 
 1. Set your Anthropic API key:
+
 ```bash
 export ANTHROPIC_API_KEY="your-api-key-here"
 ```
 
 2. Install dependencies (from monorepo root):
+
 ```bash
 pnpm install
 ```
@@ -109,6 +111,7 @@ const session = await client.startAgent('architect', 'design-system', {
 ## Error Handling
 
 The example includes error handling for:
+
 - Missing API key
 - Session failures
 - Cost limit exceeded

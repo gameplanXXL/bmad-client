@@ -1,17 +1,12 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { BmadClient } from '../client.js';
 import { MockLLMProvider } from './mock-llm-provider.js';
-import { InMemoryStorageAdapter } from '../storage/memory-adapter.js';
 
 describe('Session Storage Integration', () => {
   let client: BmadClient;
   let mockProvider: MockLLMProvider;
-  let storage: InMemoryStorageAdapter;
 
   beforeEach(async () => {
-    // Create storage adapter
-    storage = new InMemoryStorageAdapter();
-
     // Create mock provider
     mockProvider = new MockLLMProvider({
       content: 'Test response with document created!',
@@ -69,7 +64,7 @@ describe('Session Storage Integration', () => {
 
       // Verify documents were created
       expect(result.documents).toHaveLength(1);
-      expect(result.documents[0].path).toBe('/docs/prd.md');
+      expect(result?.documents[0]?.path).toBe('/docs/prd.md');
 
       // Verify documents were saved to storage
       const clientStorage = client.getStorage();
@@ -203,7 +198,7 @@ describe('Session Storage Integration', () => {
       ]);
 
       const session = await client.startAgent('pm', 'create-prd');
-      const result = await session.execute();
+      await session.execute();
 
       // Get metadata from storage
       const clientStorage = client.getStorage()!;
@@ -287,9 +282,9 @@ describe('Session Storage Integration', () => {
       const loaded = await session.loadDocuments(['/doc1.md', '/doc2.md', '/doc3.md']);
 
       expect(loaded).toHaveLength(3);
-      expect(loaded[0].content).toBe('Doc 1');
-      expect(loaded[1].content).toBe('Doc 2');
-      expect(loaded[2].content).toBe('Doc 3');
+      expect(loaded[0]!.content).toBe('Doc 1');
+      expect(loaded[1]!.content).toBe('Doc 2');
+      expect(loaded[2]!.content).toBe('Doc 3');
 
       // All available in VFS
       const toolExecutor = session.getToolExecutor();
@@ -397,7 +392,7 @@ describe('Session Storage Integration', () => {
 
       // Should load the one that exists
       expect(loaded).toHaveLength(1);
-      expect(loaded[0].path).toBe('/exists.md');
+      expect(loaded[0]!.path).toBe('/exists.md');
     });
 
     it('should return empty array when session has no documents', async () => {
@@ -489,7 +484,7 @@ describe('Session Storage Integration', () => {
       const result = await clientStorage.list({ agentId: 'architect' });
 
       expect(result.documents).toHaveLength(1);
-      expect(result.documents[0].metadata.agentId).toBe('architect');
+      expect(result?.documents[0]?.metadata.agentId).toBe('architect');
     });
   });
 });

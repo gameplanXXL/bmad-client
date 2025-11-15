@@ -37,21 +37,27 @@ When creating a PRD, use this structure:
 # Product Requirements Document
 
 ## Overview
+
 [Brief description of the product/feature]
 
 ## Problem Statement
+
 [What problem are we solving?]
 
 ## Target Users
+
 [Who is this for?]
 
 ## Requirements
+
 [List of functional requirements]
 
 ## Success Metrics
+
 [How will we measure success?]
 
 ## Timeline
+
 [Expected delivery timeline]
 ```
 

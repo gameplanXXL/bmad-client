@@ -2,13 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { BmadClient } from '@bmad/client';
-import type { SessionResult } from '@bmad/client';
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env['PORT'] || 3000;
 
 // Middleware
 app.use(cors());
@@ -18,7 +17,7 @@ app.use(express.json());
 const bmadClient = new BmadClient({
   provider: {
     type: 'anthropic',
-    apiKey: process.env.ANTHROPIC_API_KEY!,
+    apiKey: process.env['ANTHROPIC_API_KEY']!,
   },
   storage: {
     type: 'memory', // Use 'gcs' in production
@@ -38,7 +37,7 @@ console.log('✓ BMad Client initialized');
  * GET /health
  * Check API health
  */
-app.get('/health', async (req, res) => {
+app.get('/health', async (_req, res) => {
   try {
     const health = await bmadClient.healthCheck();
     res.json(health);
@@ -54,7 +53,7 @@ app.get('/health', async (req, res) => {
  * GET /diagnostics
  * Get system diagnostics
  */
-app.get('/diagnostics', async (req, res) => {
+app.get('/diagnostics', async (_req, res) => {
   try {
     const diagnostics = await bmadClient.getDiagnostics();
     res.json(diagnostics);
@@ -122,7 +121,6 @@ app.post('/sessions/:id/execute', async (req, res) => {
     const result = await session.execute();
 
     res.json({
-      sessionId: result.sessionId,
       status: result.status,
       documents: result.documents.map((doc) => ({
         path: doc.path,
@@ -131,9 +129,9 @@ app.post('/sessions/:id/execute', async (req, res) => {
       })),
       costs: {
         totalCost: result.costs.totalCost,
-        inputTokens: result.costs.totalInputTokens,
-        outputTokens: result.costs.totalOutputTokens,
-        apiCalls: result.costs.apiCallCount,
+        inputTokens: result.costs.inputTokens,
+        outputTokens: result.costs.outputTokens,
+        apiCalls: result.costs.apiCalls,
       },
       duration: result.duration,
     });
@@ -248,7 +246,6 @@ app.post('/agents/:agentId/run', async (req, res) => {
     const result = await session.execute();
 
     res.json({
-      sessionId: result.sessionId,
       status: result.status,
       documents: result.documents.map((doc) => ({
         path: doc.path,
@@ -256,8 +253,8 @@ app.post('/agents/:agentId/run', async (req, res) => {
       })),
       costs: {
         totalCost: result.costs.totalCost,
-        inputTokens: result.costs.totalInputTokens,
-        outputTokens: result.costs.totalOutputTokens,
+        inputTokens: result.costs.inputTokens,
+        outputTokens: result.costs.outputTokens,
       },
     });
   } catch (error) {
@@ -271,7 +268,7 @@ app.post('/agents/:agentId/run', async (req, res) => {
 // Error Handling
 // ============================================================================
 
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Unhandled error:', err);
   res.status(500).json({
     error: 'Internal server error',
